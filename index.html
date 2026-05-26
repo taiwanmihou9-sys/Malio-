@@ -263,9 +263,8 @@
   }
   function drawTTT(ctx) {
     ctx.fillStyle = '#0f0f24'; ctx.fillRect(0,0,BASE_W,BASE_H);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 26px "Noto Sans TC"'; ctx.textAlign = 'center';
-    ctx.fillText('🧠 智力測試 🧠', BASE_W/2, 38);
-    ctx.font = '13px "Noto Sans TC"'; ctx.fillText('你是 O · 機器人 X (它必輸)', BASE_W/2, 58);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px "Noto Sans TC"'; ctx.textAlign = 'center';
+    ctx.fillText('🧠 智力測試 🧠', BASE_W/2, 45);
     for (let r=0; r<3; r++) for (let c=0; c<3; c++) {
       const idx = r*3+c;
       ctx.fillStyle = '#1e1e36';
@@ -284,12 +283,12 @@
     if (tttFlashTimer > 0) tttFlashTimer--;
   }
 
-  // ==================== 遊戲2：賽車 (碰撞死亡重置) ====================
+  // ==================== 遊戲2：賽車 (難度調低，碰撞反饋明顯) ====================
   const ROAD_L = 180, ROAD_R = 620, LANE_W = (ROAD_R-ROAD_L)/3, FINISH_DIST = 2800, SWITCH_DIST = 2400;
-  let racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:3, invincible:0 };
+  let racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:5, invincible:0 };
 
   function resetRacing() {
-    racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:3, invincible:0 };
+    racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:5, invincible:0 };
     for (let i=0; i<20; i++) racing.markers.push({y: i*150});
   }
   function switchToRacing() { gameState = STATE.RACING; resetRacing(); inputLeft=inputRight=inputJump=false; triggerFlash(); spawnParticles(BASE_W/2, BASE_H/2, 50, 'rgb(0,200,255)', 4, 20); }
@@ -302,23 +301,23 @@
     if (inputRight && racing.lane<2) { racing.lane++; inputRight=false; spawnParticles(racing.x, racing.y+20, 5, 'rgb(255,255,255)', 2, 6); }
     racing.x = ROAD_L + LANE_W*(racing.lane+0.5);
     racing.dist += racing.speed;
-    racing.speed = Math.min(10, racing.speed+0.003);
+    racing.speed = Math.min(8, racing.speed+0.002);
     racing.markers.forEach(m => { m.y += racing.speed; if (m.y > BASE_H+50) m.y -= 3000; });
-    if (Math.random() < 0.03 + racing.speed*0.006) {
+    if (Math.random() < 0.02 + racing.speed*0.004) {
       const lane = Math.floor(Math.random()*3);
       racing.obstacles.push({ lane, y: -70, w: LANE_W*0.6, h: 40, color: '#ff4444', type:'car' });
-      if (Math.random()<0.45) racing.obstacles.push({ lane: (lane+1)%3, y: -100, w: LANE_W*0.6, h: 40, color: '#ff8800', type:'truck' });
+      if (Math.random()<0.35) racing.obstacles.push({ lane: (lane+1)%3, y: -100, w: LANE_W*0.6, h: 40, color: '#ff8800', type:'truck' });
     }
-    racing.obstacles.forEach(o => o.y += racing.speed+1);
+    racing.obstacles.forEach(o => o.y += racing.speed + 0.6);
     racing.obstacles = racing.obstacles.filter(o => o.y < BASE_H+120);
     for (const o of racing.obstacles) {
       const ox = ROAD_L + o.lane*LANE_W + (LANE_W - o.w)/2;
-      if (Math.abs(racing.x - ox) < 28 && Math.abs(racing.y - o.y) < 42 && racing.invincible<=0) {
-        racing.lives--; racing.invincible = 30; racing.speed = Math.max(2, racing.speed-2);
-        spawnParticles(racing.x, racing.y, 30, 'rgb(255,100,0)', 5, 20);
-        triggerShake(10, 15);
+      if (Math.abs(racing.x - ox) < 38 && Math.abs(racing.y - o.y) < 50 && racing.invincible<=0) {
+        racing.lives--; racing.invincible = 45; racing.speed = Math.max(2, racing.speed-2.5);
+        spawnParticles(racing.x, racing.y, 35, 'rgb(255,100,0)', 5, 25);
+        triggerShake(12, 18);
         o.y = BASE_H+200;
-        if (racing.lives <= 0) { resetRacing(); racing.started = true; } 
+        if (racing.lives <= 0) { resetRacing(); racing.started = true; }
       }
     }
     if (racing.dist >= SWITCH_DIST && !racing.switchTriggered) { racing.switchTriggered = true; racing.flashTimer = 35; triggerFlash(); triggerShake(12, 30); }
@@ -341,7 +340,7 @@
     ctx.fillText(`❤️ ${racing.lives}  距離: ${Math.floor(racing.dist)}m`, BASE_W-20, 25);
   }
 
-  // ==================== 遊戲3：地獄跑酷 (修復所有問題) ====================
+  // ==================== 遊戲3：地獄跑酷 (激光可預判，塌陷提前碎，導彈預判) ====================
   const WORLD_LEN = 5000, GRAVITY = 0.6, GROUND_Y = 400;
   let pk = { x:80, y:GROUND_Y-40, vx:0, vy:0, w:28, h:38, onGround:false, alive:true, invincible:0, trail:[] };
   let camX = 0, deathCount = 0, reachedEnd = false, endTimer = 0;
@@ -366,11 +365,11 @@
     ];
     traps = [
       { x:790, type:'invis_block', y:GROUND_Y-90, w:50, h:30 },
-      { x:1080, type:'missile', count:3, intv:35 }, { x:1580, type:'laser', ex:1680, w:180, intv:0, offY:55 },
+      { x:1080, type:'missile', count:3, intv:35 }, { x:1580, type:'laser', ex:1680, w:160, intv:75, offY:55 },
       { x:1950, type:'ceil_spike', ex:2050, cnt:8, intv:30 }, { x:2400, type:'gnd_spike', ex:2520, h:30, intv:28 },
-      { x:2600, type:'fake_finish' }, { x:3280, type:'laser', ex:3380, w:200, intv:0, offY:50 },
+      { x:2600, type:'fake_finish' }, { x:3280, type:'laser', ex:3380, w:180, intv:70, offY:50 },
       { x:3450, type:'fake_rev' }, { x:3580, type:'ceil_spike', ex:3680, cnt:10, intv:25 },
-      { x:4150, type:'laser', ex:4280, w:220, intv:0, offY:40 }, { x:WORLD_LEN-60, type:'real_finish' }
+      { x:4150, type:'laser', ex:4280, w:200, intv:65, offY:40 }, { x:WORLD_LEN-60, type:'real_finish' }
     ];
     triggered.clear(); missiles = []; lasers = []; fallingSpikes = [];
   }
@@ -412,7 +411,6 @@
       pk.y = gY - pk.h/2; pk.vy = 0; pk.onGround = true;
       const t = terrain.find(t=> pk.x>=t.s && pk.x<t.e);
       if (t && t.type==='crumble' && !triggered.has(t.id)) {
-        // 提前碎裂：靠近邊緣就觸發
         if (pk.x > t.s+10 && pk.x < t.e-10) {
           setTimeout(() => { if (!triggered.has(t.id)) { triggered.add(t.id); spawnParticles((t.s+t.e)/2, GROUND_Y+t.yo, 25, '#a67c52', 3, 20); } }, t.delay*16);
         }
@@ -429,7 +427,6 @@
     }
     if (pk.y > BASE_H+120) killPlayer('fall');
     camX += (pk.x - BASE_W*0.35 - camX)*0.12; camX = Math.max(0, Math.min(WORLD_LEN-BASE_W, camX));
-    // 導彈更新 (預判玩家位置)
     missiles.forEach(m => {
       if (!m.active) return;
       const dx = m.tx - m.x, dy = m.ty - m.y, dist = Math.sqrt(dx*dx+dy*dy);
@@ -438,10 +435,8 @@
       if (m.active && pk.invincible<=0 && Math.abs(m.x-pk.x)<14 && Math.abs(m.y-pk.y)<18) killPlayer('missile');
     });
     missiles = missiles.filter(m=>m.active);
-    // 激光 (一次性，持續短時間)
     lasers.forEach(l => { l.life--; if (l.life<=0) l.active=false; if (l.active && pk.invincible<=0 && pk.x>l.x-l.w/2 && pk.x<l.x+l.w/2 && pk.y>l.y && pk.y<l.y+l.h) killPlayer('laser'); });
     lasers = lasers.filter(l=>l.active);
-    // 陷阱觸發
     traps.forEach(trap => {
       const sx = trap.x - camX;
       if (sx>-60 && sx<BASE_W+60 && !triggered.has(trap.x+'_done')) {
@@ -454,8 +449,13 @@
         }
         if (trap.type==='laser' && pk.x>trap.x && pk.x<trap.ex && !triggered.has(trap.x+'_laser')) {
           triggered.add(trap.x+'_laser');
-          const lx = trap.x + Math.random()*(trap.ex-trap.x);
-          lasers.push({ x:lx, y:trap.offY||40, w:trap.w, h:BASE_H-(trap.offY||40), active:true, life:35 });
+          const laserLoop = () => {
+            if (gameState !== STATE.PARKOUR || pk.x < trap.x || pk.x > trap.ex) return;
+            const lx = trap.x + Math.random()*(trap.ex-trap.x);
+            lasers.push({ x:lx, y:trap.offY||40, w:trap.w, h:BASE_H-(trap.offY||40), active:true, life:22 });
+            setTimeout(laserLoop, trap.intv || 80);
+          };
+          laserLoop();
         }
         if (trap.type==='fake_finish' && Math.abs(pk.x-trap.x)<35 && !triggered.has(trap.x+'_fake')) {
           triggered.add(trap.x+'_fake'); spawnParticles(trap.x, GROUND_Y-80, 45, '#f00', 5, 35);
@@ -485,7 +485,7 @@
       ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.moveTo(-15,-3); ctx.lineTo(-22,0); ctx.lineTo(-15,3); ctx.fill();
       ctx.restore();
     });
-    lasers.forEach(l => { if(!l.active)return; const lx=l.x-camX; ctx.fillStyle=`rgba(255,0,80,${l.life/35})`; ctx.fillRect(lx-l.w/2, l.y, l.w, l.h); });
+    lasers.forEach(l => { if(!l.active)return; const lx=l.x-camX; ctx.fillStyle=`rgba(255,0,80,${l.life/22})`; ctx.fillRect(lx-l.w/2, l.y, l.w, l.h); });
     const px = pk.x-camX, py = pk.y;
     if (pk.alive && pk.invincible%6<3) {
       ctx.fillStyle='#ff6b6b'; ctx.fillRect(px-pk.w/2, py-pk.h/2, pk.w, pk.h);
