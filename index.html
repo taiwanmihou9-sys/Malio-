@@ -1,0 +1,2060 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>三合一終極遊戲 - 圈圈叉叉 → 賽車 → 跑酷</title>
+    <style>
+        :root {
+            --bg: #1a1a2e;
+            --canvas-bg: #0f0f1a;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Noto Sans TC', sans-serif;
+            overflow: hidden;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        #game-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            max-width: 100vw;
+            max-height: 100vh;
+        }
+
+        canvas {
+            display: block;
+            border: 3px solid #444;
+            border-radius: 12px;
+            box-shadow: 0 0 40px rgba(255, 100, 50, 0.3), 0 0 80px rgba(255, 50, 100, 0.2);
+            background: var(--canvas-bg);
+            max-width: 95vw;
+            max-height: 70vh;
+            cursor: pointer;
+        }
+
+        #controls {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            padding: 5px 10px;
+            z-index: 10;
+        }
+
+        .ctrl-btn {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            border: 3px solid #ff6b6b;
+            background: rgba(30, 30, 50, 0.9);
+            color: #fff;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            touch-action: manipulation;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s;
+            box-shadow: 0 4px 15px rgba(255, 100, 100, 0.3);
+            -webkit-tap-highlight-color: transparent;
+            min-width: 50px;
+            min-height: 50px;
+        }
+        .ctrl-btn:active {
+            background: #ff4444;
+            transform: scale(0.9);
+            box-shadow: 0 2px 8px rgba(255, 50, 50, 0.6);
+        }
+        .ctrl-btn.jump-btn {
+            width: 80px;
+            height: 80px;
+            font-size: 20px;
+            border-color: #ffd93d;
+            box-shadow: 0 4px 20px rgba(255, 200, 50, 0.4);
+        }
+        .ctrl-btn.jump-btn:active {
+            background: #ff8800;
+            border-color: #ff8800;
+        }
+
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.7);
+        }
+        #overlay.active {
+            display: flex;
+            pointer-events: all;
+        }
+        #overlay img {
+            max-width: 85vw;
+            max-height: 75vh;
+            border-radius: 20px;
+            box-shadow: 0 0 60px rgba(255, 200, 0, 0.7);
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn {
+            0% {
+                transform: scale(0.2) rotate(-20deg);
+                opacity: 0;
+            }
+            60% {
+                transform: scale(1.08) rotate(3deg);
+                opacity: 1;
+            }
+            100% {
+                transform: scale(1) rotate(0deg);
+                opacity: 1;
+            }
+        }
+
+        #overlay-text {
+            position: absolute;
+            bottom: 15%;
+            color: #fff;
+            font-size: clamp(20px, 4vw, 36px);
+            font-weight: 900;
+            text-align: center;
+            text-shadow: 0 0 20px #ff0, 0 0 40px #f80;
+            animation: bounceText 0.5s ease-out;
+            letter-spacing: 2px;
+        }
+        @keyframes bounceText {
+            0% {
+                transform: translateY(60px);
+                opacity: 0;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .ctrl-btn {
+                width: 48px;
+                height: 48px;
+                font-size: 22px;
+                border-width: 2px;
+            }
+            .ctrl-btn.jump-btn {
+                width: 65px;
+                height: 65px;
+                font-size: 16px;
+            }
+            #controls {
+                gap: 8px;
+            }
+            canvas {
+                border-width: 2px;
+                border-radius: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        <div id="controls">
+            <button class="ctrl-btn" id="btn-left" title="左">◀</button>
+            <button class="ctrl-btn jump-btn" id="btn-jump" title="跳躍">跳</button>
+            <button class="ctrl-btn" id="btn-right" title="右">▶</button>
+        </div>
+    </div>
+
+    <div id="overlay">
+        <img id="overlay-img" src="" alt="巨石強森">
+        <div id="overlay-text"></div>
+    </div>
+
+    <script>
+        (function() {
+            // ==================== DOM元素 ====================
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const overlay = document.getElementById('overlay');
+            const overlayImg = document.getElementById('overlay-img');
+            const overlayText = document.getElementById('overlay-text');
+            const btnLeft = document.getElementById('btn-left');
+            const btnJump = document.getElementById('btn-jump');
+            const btnRight = document.getElementById('btn-right');
+
+            // ==================== 響應式畫布 ====================
+            const BASE_WIDTH = 800;
+            const BASE_HEIGHT = 500;
+            let scale = 1;
+            let canvasOffsetX = 0;
+            let canvasOffsetY = 0;
+
+            function resizeCanvas() {
+                const maxW = Math.min(window.innerWidth * 0.94, 800);
+                const maxH = Math.min(window.innerHeight * 0.65, 500);
+                const aspect = BASE_WIDTH / BASE_HEIGHT;
+                let w, h;
+                if (maxW / maxH > aspect) {
+                    h = maxH;
+                    w = h * aspect;
+                } else {
+                    w = maxW;
+                    h = w / aspect;
+                }
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                canvas.width = BASE_WIDTH;
+                canvas.height = BASE_HEIGHT;
+                scale = w / BASE_WIDTH;
+                const rect = canvas.getBoundingClientRect();
+                canvasOffsetX = rect.left;
+                canvasOffsetY = rect.top;
+            }
+
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                updateCanvasOffset();
+            });
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => { resizeCanvas();
+                    updateCanvasOffset(); }, 300);
+            });
+
+            function updateCanvasOffset() {
+                const rect = canvas.getBoundingClientRect();
+                canvasOffsetX = rect.left;
+                canvasOffsetY = rect.top;
+                scale = rect.width / BASE_WIDTH;
+            }
+
+            function getCanvasPos(e) {
+                updateCanvasOffset();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: (clientX - canvasOffsetX) / scale,
+                    y: (clientY - canvasOffsetY) / scale
+                };
+            }
+
+            // ==================== 遊戲狀態機 ====================
+            const STATE = {
+                TICTACTOE: 'tictactoe',
+                RACING: 'racing',
+                PARKOUR: 'parkour',
+                ENDING: 'ending'
+            };
+
+            let gameState = STATE.TICTACTOE;
+            let stateTimer = 0;
+            let transitionAlpha = 0;
+            let transitionType = ''; // 'flash', 'shake', 'glitch'
+            let shakeAmount = 0;
+            let glitchLines = [];
+
+            // ==================== 輸入處理 ====================
+            const keys = {};
+            let inputLeft = false;
+            let inputRight = false;
+            let inputJump = false;
+            let inputJumpPressed = false; // 單次按下
+            let inputAction = false;
+            let inputActionPressed = false;
+
+            window.addEventListener('keydown', (e) => {
+                keys[e.key] = true;
+                if (e.key === 'ArrowLeft' || e.key === 'a') inputLeft = true;
+                if (e.key === 'ArrowRight' || e.key === 'd') inputRight = true;
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') {
+                    if (!inputJump) inputJumpPressed = true;
+                    inputJump = true;
+                    e.preventDefault();
+                }
+                if (e.key === 'Enter' || e.key === 'z') {
+                    if (!inputAction) inputActionPressed = true;
+                    inputAction = true;
+                }
+                if (e.key === 'r' && gameState === STATE.PARKOUR) {
+                    resetParkour();
+                }
+            });
+            window.addEventListener('keyup', (e) => {
+                keys[e.key] = false;
+                if (e.key === 'ArrowLeft' || e.key === 'a') inputLeft = false;
+                if (e.key === 'ArrowRight' || e.key === 'd') inputRight = false;
+                if (e.key === 'ArrowUp' || e.key === 'w' || e.key === ' ') inputJump = false;
+                if (e.key === 'Enter' || e.key === 'z') inputAction = false;
+            });
+
+            // 虛擬按鈕
+            function setupButton(btn, onDown, onUp) {
+                btn.addEventListener('pointerdown', (e) => { e.preventDefault();
+                    onDown(); });
+                btn.addEventListener('pointerup', (e) => { e.preventDefault();
+                    onUp(); });
+                btn.addEventListener('pointerleave', (e) => { onUp(); });
+                btn.addEventListener('pointercancel', (e) => { onUp(); });
+                btn.addEventListener('touchstart', (e) => { e.preventDefault();
+                    onDown(); });
+                btn.addEventListener('touchend', (e) => { e.preventDefault();
+                    onUp(); });
+            }
+
+            setupButton(btnLeft,
+                () => { inputLeft = true; },
+                () => { inputLeft = false; }
+            );
+            setupButton(btnRight,
+                () => { inputRight = true; },
+                () => { inputRight = false; }
+            );
+            setupButton(btnJump,
+                () => { if (!inputJump) inputJumpPressed = true;
+                    inputJump = true; },
+                () => { inputJump = false; }
+            );
+
+            // Canvas點擊（井字棋）
+            canvas.addEventListener('click', (e) => {
+                if (gameState === STATE.TICTACTOE) {
+                    const pos = getCanvasPos(e);
+                    handleTicTacToeClick(pos);
+                }
+            });
+            canvas.addEventListener('touchstart', (e) => {
+                if (gameState === STATE.TICTACTOE && e.touches.length === 1) {
+                    const pos = getCanvasPos(e);
+                    handleTicTacToeClick(pos);
+                }
+            });
+
+            // ==================== 粒子系統 ====================
+            let particles = [];
+
+            function spawnParticles(x, y, count, color, speed, life) {
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const spd = speed * (0.5 + Math.random());
+                    particles.push({
+                        x,
+                        y,
+                        vx: Math.cos(angle) * spd,
+                        vy: Math.sin(angle) * spd,
+                        life: life * (0.6 + Math.random() * 0.8),
+                        maxLife: life,
+                        color,
+                        size: 1.5 + Math.random() * 3.5,
+                    });
+                }
+            }
+
+            function updateParticles(dt) {
+                for (let i = particles.length - 1; i >= 0; i--) {
+                    const p = particles[i];
+                    p.x += p.vx * dt;
+                    p.y += p.vy * dt;
+                    p.life -= dt;
+                    if (p.life <= 0) particles.splice(i, 1);
+                }
+            }
+
+            function drawParticles(ctx) {
+                for (const p of particles) {
+                    const alpha = Math.max(0, p.life / p.maxLife);
+                    ctx.fillStyle = p.color.replace('1)', `${alpha})`).replace('rgb',
+                        'rgba');
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+
+            // ==================== 畫面震動與特效 ====================
+            function triggerShake(amount, duration) {
+                shakeAmount = amount;
+                stateTimer = duration;
+                transitionType = 'shake';
+            }
+
+            function triggerFlash() {
+                transitionAlpha = 1;
+                stateTimer = 30;
+                transitionType = 'flash';
+            }
+
+            function triggerGlitch(duration) {
+                stateTimer = duration;
+                transitionType = 'glitch';
+                glitchLines = [];
+                for (let i = 0; i < 20; i++) {
+                    glitchLines.push({
+                        y: Math.random() * BASE_HEIGHT,
+                        h: 2 + Math.random() * 20,
+                        offset: (Math.random() - 0.5) * 60,
+                        alpha: 0.3 + Math.random() * 0.7,
+                    });
+                }
+            }
+
+            function updateTransition() {
+                if (stateTimer > 0) {
+                    stateTimer--;
+                    if (transitionType === 'flash') {
+                        transitionAlpha = Math.max(0, stateTimer / 30);
+                    }
+                    if (transitionType === 'shake') {
+                        shakeAmount *= 0.85;
+                        if (stateTimer <= 0) shakeAmount = 0;
+                    }
+                    if (transitionType === 'glitch') {
+                        if (stateTimer <= 0) glitchLines = [];
+                    }
+                } else {
+                    shakeAmount = 0;
+                    transitionAlpha = 0;
+                    transitionType = '';
+                    glitchLines = [];
+                }
+            }
+
+            function applyScreenShake(ctx) {
+                if (shakeAmount > 0.3) {
+                    const sx = (Math.random() - 0.5) * shakeAmount * 2;
+                    const sy = (Math.random() - 0.5) * shakeAmount * 2;
+                    ctx.save();
+                    ctx.translate(sx, sy);
+                    return true;
+                }
+                return false;
+            }
+
+            function drawGlitchOverlay(ctx) {
+                if (transitionType === 'glitch' && glitchLines.length > 0) {
+                    for (const gl of glitchLines) {
+                        ctx.fillStyle = `rgba(255,0,100,${gl.alpha * 0.5})`;
+                        ctx.fillRect(gl.offset, gl.y, 40 + Math.random() * 80, gl.h);
+                        ctx.fillStyle = `rgba(0,255,255,${gl.alpha * 0.4})`;
+                        ctx.fillRect(gl.offset + 4, gl.y - 1, 30 + Math.random() * 60, gl.h);
+                    }
+                }
+                if (transitionAlpha > 0.01) {
+                    ctx.fillStyle = `rgba(255,255,255,${transitionAlpha})`;
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                }
+            }
+
+            // ==================== 遊戲1：井字棋 ====================
+            const TTT_CELL = 120;
+            const TTT_OFFSET_X = (BASE_WIDTH - TTT_CELL * 3) / 2;
+            const TTT_OFFSET_Y = (BASE_HEIGHT - TTT_CELL * 3) / 2 + 20;
+            let tttBoard = Array(9).fill(null); // null, 'O', 'X'
+            let tttPlayerTurn = true;
+            let tttGameOver = false;
+            let tttWinner = null;
+            let tttSwitchTriggered = false;
+            let tttFlashTimer = 0;
+            let tttHighlightCells = [];
+
+            function resetTicTacToe() {
+                tttBoard = Array(9).fill(null);
+                tttPlayerTurn = true;
+                tttGameOver = false;
+                tttWinner = null;
+                tttSwitchTriggered = false;
+                tttFlashTimer = 0;
+                tttHighlightCells = [];
+            }
+
+            function checkTicTacToeWin(board) {
+                const lines = [
+                    [0, 1, 2],
+                    [3, 4, 5],
+                    [6, 7, 8],
+                    [0, 3, 6],
+                    [1, 4, 7],
+                    [2, 5, 8],
+                    [0, 4, 8],
+                    [2, 4, 6]
+                ];
+                for (const [a, b, c] of lines) {
+                    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+                        return { winner: board[a], cells: [a, b, c] };
+                    }
+                }
+                return null;
+            }
+
+            function findWinningMove(board, player) {
+                const lines = [
+                    [0, 1, 2],
+                    [3, 4, 5],
+                    [6, 7, 8],
+                    [0, 3, 6],
+                    [1, 4, 7],
+                    [2, 5, 8],
+                    [0, 4, 8],
+                    [2, 4, 6]
+                ];
+                for (const [a, b, c] of lines) {
+                    const vals = [board[a], board[b], board[c]];
+                    const count = vals.filter(v => v === player).length;
+                    const empty = vals.findIndex(v => v === null);
+                    if (count === 2 && empty !== -1) {
+                        return [a, b, c][empty];
+                    }
+                }
+                return null;
+            }
+
+            function findPlayerAboutToWin() {
+                return findWinningMove(tttBoard, 'O');
+            }
+
+            function botMove() {
+                if (tttGameOver || tttSwitchTriggered) return;
+
+                // 機器人必輸策略：故意不擋玩家，也避免自己意外獲勝
+                // 優先找一個不會擋玩家獲勝、也不會讓自己贏的位置
+                const playerWinMove = findWinningMove(tttBoard, 'O');
+                const botWinMove = findWinningMove(tttBoard, 'X');
+
+                // 如果玩家即將贏，機器人「裝作沒看到」，下別的地方
+                let available = [];
+                for (let i = 0; i < 9; i++) {
+                    if (tttBoard[i] === null) available.push(i);
+                }
+
+                if (available.length === 0) return;
+
+                // 排除會擋住玩家的位置（讓玩家能贏）
+                let nonBlocking = available.filter(i => i !== playerWinMove);
+                // 也排除會讓自己贏的位置
+                nonBlocking = nonBlocking.filter(i => i !== botWinMove);
+
+                if (nonBlocking.length > 0) {
+                    // 隨機選一個不擋玩家的位置
+                    const move = nonBlocking[Math.floor(Math.random() * nonBlocking.length)];
+                    tttBoard[move] = 'X';
+                } else if (available.length > 0) {
+                    // 如果只能擋或贏，選一個隨機的（但避免贏）
+                    const nonWin = available.filter(i => i !== botWinMove);
+                    if (nonWin.length > 0) {
+                        tttBoard[nonWin[Math.floor(Math.random() * nonWin.length)]] = 'X';
+                    } else {
+                        tttBoard[available[Math.floor(Math.random() * available.length)]] = 'X';
+                    }
+                }
+
+                // 檢查是否有勝負
+                const result = checkTicTacToeWin(tttBoard);
+                if (result) {
+                    tttGameOver = true;
+                    tttWinner = result.winner;
+                    tttHighlightCells = result.cells;
+                } else if (tttBoard.every(c => c !== null)) {
+                    tttGameOver = true;
+                    tttWinner = 'draw';
+                }
+
+                tttPlayerTurn = true;
+            }
+
+            function handleTicTacToeClick(pos) {
+                if (!tttPlayerTurn || tttGameOver || tttSwitchTriggered) return;
+                if (gameState !== STATE.TICTACTOE) return;
+
+                const col = Math.floor((pos.x - TTT_OFFSET_X) / TTT_CELL);
+                const row = Math.floor((pos.y - TTT_OFFSET_Y) / TTT_CELL);
+                const idx = row * 3 + col;
+
+                if (col < 0 || col > 2 || row < 0 || row > 2) return;
+                if (tttBoard[idx] !== null) return;
+
+                // 玩家下棋
+                tttBoard[idx] = 'O';
+                tttPlayerTurn = false;
+
+                // 檢查玩家是否即將獲勝（已經有兩個連線+這個下了之後）
+                const result = checkTicTacToeWin(tttBoard);
+                if (result && result.winner === 'O') {
+                    // 玩家贏了！但我們要在他快贏時切換
+                    // 實際上玩家已經贏了，但我們觸發切換
+                    tttHighlightCells = result.cells;
+                    tttSwitchTriggered = true;
+                    tttFlashTimer = 25;
+                    triggerFlash();
+                    triggerShake(8, 20);
+                    spawnParticles(
+                        TTT_OFFSET_X + (result.cells[0] % 3) * TTT_CELL + TTT_CELL / 2,
+                        TTT_OFFSET_Y + Math.floor(result.cells[0] / 3) * TTT_CELL + TTT_CELL / 2,
+                        40, 'rgb(255,200,50)', 3, 25
+                    );
+                    // 延遲切換
+                    setTimeout(() => {
+                        if (gameState === STATE.TICTACTOE) {
+                            switchToRacing();
+                        }
+                    }, 800);
+                    return;
+                }
+
+                // 檢查平局
+                if (tttBoard.every(c => c !== null)) {
+                    tttGameOver = true;
+                    tttWinner = 'draw';
+                    // 平局也切換
+                    tttSwitchTriggered = true;
+                    setTimeout(() => {
+                        if (gameState === STATE.TICTACTOE) {
+                            switchToRacing();
+                        }
+                    }, 600);
+                    return;
+                }
+
+                // 檢查玩家是否即將贏（2個連線）
+                const aboutToWin = findPlayerAboutToWin();
+                if (aboutToWin !== null) {
+                    tttHighlightCells = [];
+                    // 標記玩家已有的兩個
+                    const lines = [
+                        [0, 1, 2],
+                        [3, 4, 5],
+                        [6, 7, 8],
+                        [0, 3, 6],
+                        [1, 4, 7],
+                        [2, 5, 8],
+                        [0, 4, 8],
+                        [2, 4, 6]
+                    ];
+                    for (const [a, b, c] of lines) {
+                        if (tttBoard[a] === 'O' && tttBoard[b] === 'O' && tttBoard[c] === null)
+                            tttHighlightCells = [a, b];
+                        if (tttBoard[a] === 'O' && tttBoard[c] === 'O' && tttBoard[b] === null)
+                            tttHighlightCells = [a, c];
+                        if (tttBoard[b] === 'O' && tttBoard[c] === 'O' && tttBoard[a] === null)
+                            tttHighlightCells = [b, c];
+                    }
+                }
+
+                // 機器人回合（延遲一下）
+                setTimeout(() => {
+                    if (!tttSwitchTriggered && gameState === STATE.TICTACTOE) {
+                        botMove();
+                    }
+                }, 350);
+            }
+
+            function drawTicTacToe(ctx) {
+                // 背景
+                ctx.fillStyle = '#1a1a30';
+                ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+                // 標題
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('❌ 圈圈叉叉 ⭕', BASE_WIDTH / 2, 35);
+                ctx.font = '14px "Noto Sans TC", sans-serif';
+                ctx.fillText('你是 O · 機器人是 X（它必輸！）', BASE_WIDTH / 2, 58);
+
+                // 棋盤
+                const ox = TTT_OFFSET_X;
+                const oy = TTT_OFFSET_Y;
+                const cs = TTT_CELL;
+
+                // 格子背景
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 3; c++) {
+                        const idx = r * 3 + c;
+                        let fillColor = '#252540';
+                        if (tttHighlightCells.includes(idx) && tttFlashTimer > 0) {
+                            const flash = Math.sin(tttFlashTimer * 0.8) * 0.5 + 0.5;
+                            fillColor = `rgb(${Math.floor(40+flash*120)},${Math.floor(30+flash*60)},${Math.floor(50+flash*100)})`;
+                        }
+                        if (tttBoard[idx] === 'O') fillColor = '#1a3a2a';
+                        if (tttBoard[idx] === 'X') fillColor = '#3a1a1a';
+                        ctx.fillStyle = fillColor;
+                        ctx.fillRect(ox + c * cs + 3, oy + r * cs + 3, cs - 6, cs - 6);
+
+                        // 邊框
+                        ctx.strokeStyle = '#555';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(ox + c * cs + 3, oy + r * cs + 3, cs - 6, cs - 6);
+                    }
+                }
+
+                // 畫線
+                ctx.strokeStyle = '#888';
+                ctx.lineWidth = 3;
+                for (let i = 1; i < 3; i++) {
+                    ctx.beginPath();
+                    ctx.moveTo(ox + i * cs, oy + 5);
+                    ctx.lineTo(ox + i * cs, oy + cs * 3 - 5);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(ox + 5, oy + i * cs);
+                    ctx.lineTo(ox + cs * 3 - 5, oy + i * cs);
+                    ctx.stroke();
+                }
+
+                // 畫標記
+                for (let r = 0; r < 3; r++) {
+                    for (let c = 0; c < 3; c++) {
+                        const idx = r * 3 + c;
+                        const cx = ox + c * cs + cs / 2;
+                        const cy = oy + r * cs + cs / 2;
+                        if (tttBoard[idx] === 'O') {
+                            ctx.strokeStyle = '#4f4';
+                            ctx.lineWidth = 5;
+                            ctx.beginPath();
+                            ctx.arc(cx, cy, cs * 0.33, 0, Math.PI * 2);
+                            ctx.stroke();
+                        } else if (tttBoard[idx] === 'X') {
+                            ctx.strokeStyle = '#f44';
+                            ctx.lineWidth = 5;
+                            const s = cs * 0.3;
+                            ctx.beginPath();
+                            ctx.moveTo(cx - s, cy - s);
+                            ctx.lineTo(cx + s, cy + s);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(cx + s, cy - s);
+                            ctx.lineTo(cx - s, cy + s);
+                            ctx.stroke();
+                        }
+                    }
+                }
+
+                // 切換提示
+                if (tttSwitchTriggered && tttFlashTimer > 0) {
+                    const alpha = Math.abs(Math.sin(tttFlashTimer * 0.6));
+                    ctx.fillStyle = `rgba(255,255,255,${alpha*0.6})`;
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                    ctx.fillStyle = `rgba(255,50,50,${alpha})`;
+                    ctx.font = 'bold 32px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⚠️ 切換中... ⚠️', BASE_WIDTH / 2, BASE_HEIGHT / 2);
+                }
+
+                if (tttFlashTimer > 0) tttFlashTimer--;
+            }
+
+            // ==================== 遊戲2：賽車 ====================
+            const RACING_ROAD_LEFT = 180;
+            const RACING_ROAD_RIGHT = 620;
+            const RACING_LANE_COUNT = 3;
+            const RACING_LANE_WIDTH = (RACING_ROAD_RIGHT - RACING_ROAD_LEFT) / RACING_LANE_COUNT;
+            const RACING_FINISH_DISTANCE = 2800; // 總賽程
+            const RACING_SWITCH_DISTANCE = 2400; // 接近終點時切換
+
+            let racingPlayerX = BASE_WIDTH / 2;
+            let racingPlayerY = BASE_HEIGHT - 100;
+            let racingPlayerLane = 1; // 0,1,2
+            let racingSpeed = 4;
+            let racingDistance = 0;
+            let racingObstacles = [];
+            let racingCountdown = 3;
+            let racingCountdownTimer = 60;
+            let racingStarted = false;
+            let racingSwitchTriggered = false;
+            let racingFlashTimer = 0;
+            let racingRoadMarkers = [];
+
+            function resetRacing() {
+                racingPlayerLane = 1;
+                racingPlayerX = RACING_ROAD_LEFT + RACING_LANE_WIDTH * 1.5;
+                racingPlayerY = BASE_HEIGHT - 100;
+                racingSpeed = 4;
+                racingDistance = 0;
+                racingObstacles = [];
+                racingCountdown = 3;
+                racingCountdownTimer = 60;
+                racingStarted = false;
+                racingSwitchTriggered = false;
+                racingFlashTimer = 0;
+                racingRoadMarkers = [];
+                for (let i = 0; i < 20; i++) {
+                    racingRoadMarkers.push({ y: i * 150, offset: 0 });
+                }
+            }
+
+            function switchToRacing() {
+                gameState = STATE.RACING;
+                resetRacing();
+                triggerGlitch(25);
+                spawnParticles(BASE_WIDTH / 2, BASE_HEIGHT / 2, 60, 'rgb(255,100,50)', 5, 30);
+                // 重置輸入
+                inputLeft = false;
+                inputRight = false;
+                inputJump = false;
+            }
+
+            function spawnRacingObstacle() {
+                const lane = Math.floor(Math.random() * RACING_LANE_COUNT);
+                // 有時兩個障礙物同時出現
+                const doubleTrouble = Math.random() < 0.35;
+                const lane2 = doubleTrouble ? (lane + 1 + Math.floor(Math.random() * (RACING_LANE_COUNT -
+                    1))) % RACING_LANE_COUNT : -1;
+
+                const types = ['car', 'truck', 'barrier', 'oil'];
+                const type = types[Math.floor(Math.random() * types.length)];
+
+                const obs = {
+                    lane,
+                    y: -80,
+                    type,
+                    width: type === 'truck' ? RACING_LANE_WIDTH * 0.85 : RACING_LANE_WIDTH * 0.6,
+                    height: type === 'truck' ? 70 : type === 'barrier' ? 20 : 45,
+                    color: type === 'car' ? '#ff4444' : type === 'truck' ? '#ff8800' : type === 'barrier' ?
+                        '#ffcc00' : '#333',
+                    speed: racingSpeed + Math.random() * 3,
+                };
+                racingObstacles.push(obs);
+
+                if (doubleTrouble && lane2 >= 0 && lane2 !== lane) {
+                    const obs2 = { ...obs, lane: lane2, y: obs.y - 30 - Math.random() * 40 };
+                    racingObstacles.push(obs2);
+                }
+            }
+
+            function updateRacing() {
+                if (racingSwitchTriggered) {
+                    racingFlashTimer--;
+                    if (racingFlashTimer <= 0 && gameState === STATE.RACING) {
+                        switchToParkour();
+                    }
+                    return;
+                }
+
+                // 倒數
+                if (!racingStarted) {
+                    racingCountdownTimer--;
+                    if (racingCountdownTimer <= 0) {
+                        racingCountdown--;
+                        racingCountdownTimer = 45;
+                        if (racingCountdown <= 0) {
+                            racingStarted = true;
+                            racingCountdown = 0;
+                            spawnParticles(BASE_WIDTH / 2, BASE_HEIGHT / 2, 50, 'rgb(0,255,100)', 4, 20);
+                        }
+                    }
+                    return;
+                }
+
+                // 玩家移動
+                if (inputLeft && racingPlayerLane > 0) {
+                    racingPlayerLane--;
+                    inputLeft = false;
+                    spawnParticles(racingPlayerX, racingPlayerY + 20, 8, 'rgb(255,255,255)', 2, 10);
+                }
+                if (inputRight && racingPlayerLane < RACING_LANE_COUNT - 1) {
+                    racingPlayerLane++;
+                    inputRight = false;
+                    spawnParticles(racingPlayerX, racingPlayerY + 20, 8, 'rgb(255,255,255)', 2, 10);
+                }
+                racingPlayerX = RACING_ROAD_LEFT + RACING_LANE_WIDTH * (racingPlayerLane + 0.5);
+
+                // 更新距離
+                racingDistance += racingSpeed;
+                racingSpeed += 0.003;
+                if (racingSpeed > 10) racingSpeed = 10;
+
+                // 更新道路標記
+                for (const marker of racingRoadMarkers) {
+                    marker.y += racingSpeed;
+                    if (marker.y > BASE_HEIGHT + 50) marker.y -= 20 * 150;
+                }
+
+                // 生成障礙物
+                if (Math.random() < 0.025 + racingSpeed * 0.004) {
+                    spawnRacingObstacle();
+                }
+
+                // 更新障礙物
+                for (const obs of racingObstacles) {
+                    obs.y += obs.speed;
+                }
+                racingObstacles = racingObstacles.filter(o => o.y < BASE_HEIGHT + 120);
+
+                // 碰撞檢測
+                const px = racingPlayerX;
+                const py = racingPlayerY;
+                const pw = 40;
+                const ph = 70;
+                for (const obs of racingObstacles) {
+                    const ox = RACING_ROAD_LEFT + obs.lane * RACING_LANE_WIDTH + (RACING_LANE_WIDTH - obs.width) /
+                        2;
+                    const oy = obs.y;
+                    if (
+                        px - pw / 2 < ox + obs.width &&
+                        px + pw / 2 > ox &&
+                        py - ph / 2 < oy + obs.height &&
+                        py + ph / 2 > oy
+                    ) {
+                        // 碰撞！減速但繼續
+                        racingSpeed = Math.max(3, racingSpeed - 1.5);
+                        spawnParticles(px, py, 20, 'rgb(255,150,0)', 3, 15);
+                        triggerShake(6, 12);
+                        obs.y = BASE_HEIGHT + 200; // 移除障礙物
+                    }
+                }
+
+                // 檢查是否接近終點
+                if (racingDistance >= RACING_SWITCH_DISTANCE && !racingSwitchTriggered) {
+                    racingSwitchTriggered = true;
+                    racingFlashTimer = 35;
+                    triggerFlash();
+                    triggerShake(12, 30);
+                    triggerGlitch(30);
+                    spawnParticles(BASE_WIDTH / 2, BASE_HEIGHT / 2, 80, 'rgb(255,255,0)', 6, 35);
+                }
+            }
+
+            function drawRacing(ctx) {
+                // 天空
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+                skyGrad.addColorStop(0, '#1a2a40');
+                skyGrad.addColorStop(1, '#2a3a50');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+                // 道路
+                ctx.fillStyle = '#333';
+                ctx.fillRect(RACING_ROAD_LEFT - 10, 0, RACING_ROAD_RIGHT - RACING_ROAD_LEFT + 20, BASE_HEIGHT);
+                ctx.fillStyle = '#444';
+                ctx.fillRect(RACING_ROAD_LEFT, 0, RACING_ROAD_RIGHT - RACING_ROAD_LEFT, BASE_HEIGHT);
+
+                // 車道線
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([30, 20]);
+                for (let i = 1; i < RACING_LANE_COUNT; i++) {
+                    const lx = RACING_ROAD_LEFT + i * RACING_LANE_WIDTH;
+                    ctx.beginPath();
+                    ctx.moveTo(lx, 0);
+                    ctx.lineTo(lx, BASE_HEIGHT);
+                    ctx.stroke();
+                }
+                ctx.setLineDash([]);
+
+                // 道路標記
+                for (const marker of racingRoadMarkers) {
+                    ctx.fillStyle = '#ff0';
+                    ctx.fillRect(RACING_ROAD_LEFT + 15, marker.y, 25, 4);
+                    ctx.fillRect(RACING_ROAD_RIGHT - 40, marker.y, 25, 4);
+                }
+
+                // 終點線（如果接近）
+                const finishY = BASE_HEIGHT - (RACING_FINISH_DISTANCE - racingDistance) * 0.6;
+                if (finishY > -100 && finishY < BASE_HEIGHT + 100) {
+                    const fy = Math.max(-50, Math.min(BASE_HEIGHT + 50, finishY));
+                    for (let cx = RACING_ROAD_LEFT; cx < RACING_ROAD_RIGHT; cx += 16) {
+                        const colIdx = Math.floor((cx - RACING_ROAD_LEFT) / 16);
+                        ctx.fillStyle = colIdx % 2 === 0 ? '#fff' : '#000';
+                        ctx.fillRect(cx, fy, 16, 12);
+                    }
+                    // 終點標籤
+                    if (fy > 10 && fy < BASE_HEIGHT - 10) {
+                        ctx.fillStyle = '#ff0';
+                        ctx.font = 'bold 18px "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🏁 終點', RACING_ROAD_RIGHT + 50, fy + 8);
+                    }
+                }
+
+                // 障礙物
+                for (const obs of racingObstacles) {
+                    const ox = RACING_ROAD_LEFT + obs.lane * RACING_LANE_WIDTH + (RACING_LANE_WIDTH - obs.width) /
+                        2;
+                    if (obs.type === 'car') {
+                        ctx.fillStyle = obs.color;
+                        ctx.fillRect(ox, obs.y, obs.width, obs.height);
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(ox + 5, obs.y + 8, obs.width - 10, obs.height - 16);
+                        ctx.fillStyle = '#ff0';
+                        ctx.fillRect(ox + obs.width - 8, obs.y + 5, 6, 8);
+                        ctx.fillRect(ox + 2, obs.y + 5, 6, 8);
+                    } else if (obs.type === 'truck') {
+                        ctx.fillStyle = obs.color;
+                        ctx.fillRect(ox, obs.y, obs.width, obs.height);
+                        ctx.fillStyle = '#555';
+                        ctx.fillRect(ox + 3, obs.y + 5, obs.width - 6, obs.height - 10);
+                    } else if (obs.type === 'barrier') {
+                        ctx.fillStyle = obs.color;
+                        ctx.fillRect(ox, obs.y, obs.width, obs.height);
+                        for (let sx = ox; sx < ox + obs.width; sx += 8) {
+                            ctx.fillStyle = sx % 16 < 8 ? '#ff0' : '#f80';
+                            ctx.fillRect(sx, obs.y, 8, obs.height);
+                        }
+                    } else if (obs.type === 'oil') {
+                        ctx.fillStyle = 'rgba(30,30,30,0.8)';
+                        ctx.beginPath();
+                        ctx.arc(ox + obs.width / 2, obs.y + obs.height / 2, obs.width / 2, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+
+                // 玩家車輛
+                const px = racingPlayerX;
+                const py = racingPlayerY;
+                // 車身
+                ctx.fillStyle = '#00aaff';
+                ctx.beginPath();
+                ctx.roundRect(px - 20, py - 35, 40, 70, 8);
+                ctx.fill();
+                ctx.strokeStyle = '#0088cc';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                // 車窗
+                ctx.fillStyle = '#88ddff';
+                ctx.fillRect(px - 14, py - 25, 28, 20);
+                ctx.fillStyle = '#aaddff';
+                ctx.fillRect(px - 10, py - 10, 20, 15);
+                // 車燈
+                ctx.fillStyle = '#ff0';
+                ctx.fillRect(px - 16, py - 33, 8, 6);
+                ctx.fillRect(px + 8, py - 33, 8, 6);
+                ctx.fillStyle = '#f00';
+                ctx.fillRect(px - 16, py + 27, 8, 5);
+                ctx.fillRect(px + 8, py + 27, 8, 5);
+                // 車輪
+                ctx.fillStyle = '#111';
+                ctx.fillRect(px - 22, py - 20, 6, 14);
+                ctx.fillRect(px + 16, py - 20, 6, 14);
+                ctx.fillRect(px - 22, py + 8, 6, 14);
+                ctx.fillRect(px + 16, py + 8, 6, 14);
+
+                // 倒數
+                if (!racingStarted && racingCountdown > 0) {
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 80px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    const cdText = racingCountdown === 0 ? 'GO!' : String(racingCountdown);
+                    const cdScale = 1 + Math.abs(Math.sin(racingCountdownTimer * 0.15)) * 0.3;
+                    ctx.save();
+                    ctx.translate(BASE_WIDTH / 2, BASE_HEIGHT / 2);
+                    ctx.scale(cdScale, cdScale);
+                    ctx.fillText(cdText, 0, 0);
+                    ctx.restore();
+                }
+
+                // 距離指示器
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px monospace';
+                ctx.textAlign = 'right';
+                const distPercent = Math.min(100, Math.floor(racingDistance / RACING_FINISH_DISTANCE * 100));
+                ctx.fillText(`距離: ${Math.floor(racingDistance)}m / ${RACING_FINISH_DISTANCE}m (${distPercent}%)`,
+                    BASE_WIDTH - 20, 25);
+
+                // 速度
+                ctx.fillText(`速度: ${Math.floor(racingSpeed*30)} km/h`, BASE_WIDTH - 20, 48);
+
+                // 切換閃爍
+                if (racingSwitchTriggered && racingFlashTimer > 0) {
+                    const alpha = Math.abs(Math.sin(racingFlashTimer * 0.5));
+                    ctx.fillStyle = `rgba(255,255,255,${alpha*0.7})`;
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                    ctx.fillStyle = 'rgba(255,0,0,0.8)';
+                    ctx.font = 'bold 36px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⚡ 系統切換中... ⚡', BASE_WIDTH / 2, BASE_HEIGHT / 2);
+                }
+            }
+
+            // ==================== 遊戲3：跑酷（貓里奧風格）====================
+            const PARKOUR_WORLD_LENGTH = 5200; // 世界總長度
+            const PARKOUR_GRAVITY = 0.65;
+            const PARKOUR_GROUND_Y = 400; // 基準地面Y座標
+
+            let parkourPlayer = {
+                x: 80,
+                y: PARKOUR_GROUND_Y - 40,
+                vx: 0,
+                vy: 0,
+                width: 30,
+                height: 40,
+                onGround: false,
+                alive: true,
+                facingRight: true,
+                invincible: 0,
+                trailPositions: [],
+            };
+
+            let parkourCameraX = 0;
+            let parkourDeathCount = 0;
+            let parkourReachedEnd = false;
+            let parkourEndTimer = 0;
+
+            // 地形段定義：{startX, endX, yOffset(相對於基準地面), type:'solid'|'crumbling'|'fake'|'moving'|'none'}
+            let parkourTerrain = [];
+
+            // 陷阱定義：{x, type, ...params}
+            let parkourTraps = [];
+            let parkourTriggeredTraps = new Set();
+            let parkourMissiles = [];
+            let parkourLasers = [];
+            let parkourFallingSpikes = [];
+
+            function buildParkourMap() {
+                parkourTerrain = [];
+                parkourTraps = [];
+                parkourTriggeredTraps = new Set();
+                parkourMissiles = [];
+                parkourLasers = [];
+                parkourFallingSpikes = [];
+
+                // 基準地面（大部分區域有地面，但有些地方有洞）
+                // 0-300: 安全起始區
+                parkourTerrain.push({ startX: 0, endX: 300, yOffset: 0, type: 'solid' });
+
+                // 300-450: 看起來安全但會塌陷的地板
+                parkourTerrain.push({ startX: 300, endX: 450, yOffset: 0, type: 'crumbling', crumbleDelay: 25,
+                    crumbleID: 'cr1' });
+
+                // 450-520: 缺口（需要跳躍）
+                // 無地面
+
+                // 520-700: 正常地面
+                parkourTerrain.push({ startX: 520, endX: 700, yOffset: 0, type: 'solid' });
+
+                // 700-750: 又一個塌陷地板
+                parkourTerrain.push({ startX: 700, endX: 750, yOffset: 0, type: 'crumbling', crumbleDelay: 18,
+                    crumbleID: 'cr2' });
+
+                // 750-850: 缺口 + 上方有隱形方塊
+                parkourTraps.push({ x: 790, type: 'invisible_block', y: PARKOUR_GROUND_Y - 100, width: 50,
+                    height: 30 });
+
+                // 850-1050: 正常地面
+                parkourTerrain.push({ startX: 850, endX: 1050, yOffset: 0, type: 'solid' });
+
+                // 1050-1150: 導彈區 - 地面正常但會有導彈飛來
+                parkourTerrain.push({ startX: 1050, endX: 1150, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 1080, type: 'missile_trigger', missileCount: 3, interval: 40 });
+                parkourTraps.push({ x: 1120, type: 'missile_trigger', missileCount: 2, interval: 30 });
+
+                // 1150-1250: 地板消失區（看起來正常但踩上去短暫延遲後消失）
+                parkourTerrain.push({ startX: 1150, endX: 1250, yOffset: 0, type: 'crumbling', crumbleDelay: 15,
+                    crumbleID: 'cr3' });
+
+                // 1250-1400: 多平台跳躍區（小平台）
+                for (let px = 1250; px < 1400; px += 55) {
+                    if (Math.random() < 0.6) {
+                        parkourTerrain.push({ startX: px, endX: px + 35, yOffset: -20 - Math.random() * 40, type: 'solid',
+                            isPlatform: true });
+                    }
+                }
+                parkourTerrain.push({ startX: 1400, endX: 1550, yOffset: 0, type: 'solid' });
+
+                // 1550-1700: 激光走廊
+                parkourTerrain.push({ startX: 1550, endX: 1700, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 1580, type: 'laser_zone', endX: 1680, laserWidth: 180, interval: 55,
+                    offsetY: 60 });
+
+                // 1700-1800: 缺口
+                parkourTerrain.push({ startX: 1800, endX: 1950, yOffset: 0, type: 'solid' });
+
+                // 1950-2100: 天花板尖刺掉落區
+                parkourTerrain.push({ startX: 1950, endX: 2100, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 1980, type: 'ceiling_spikes', endX: 2080, count: 8, interval: 35 });
+
+                // 2100-2200: 移動平台
+                parkourTerrain.push({ startX: 2100, endX: 2110, yOffset: -60, type: 'moving', moveRange: 80,
+                    moveSpeed: 1.5, moveAxis: 'y', isPlatform: true });
+                parkourTerrain.push({ startX: 2140, endX: 2150, yOffset: -80, type: 'moving', moveRange: 60,
+                    moveSpeed: 2, moveAxis: 'y', isPlatform: true });
+                parkourTerrain.push({ startX: 2180, endX: 2190, yOffset: -50, type: 'moving', moveRange: 70,
+                    moveSpeed: 1.8, moveAxis: 'y', isPlatform: true });
+                parkourTerrain.push({ startX: 2220, endX: 2400, yOffset: 0, type: 'solid' });
+
+                // 2400-2550: 地面尖刺彈出區
+                parkourTerrain.push({ startX: 2400, endX: 2550, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 2420, type: 'ground_spikes', endX: 2530, spikeHeight: 35, interval: 30,
+                    randomOffset: true });
+
+                // 2550-2650: 假終點陷阱！
+                parkourTerrain.push({ startX: 2550, endX: 2650, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 2600, type: 'fake_finish', y: PARKOUR_GROUND_Y - 120 });
+
+                // 2650-2800: 綜合陷阱區
+                parkourTerrain.push({ startX: 2650, endX: 2800, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 2680, type: 'missile_trigger', missileCount: 4, interval: 25 });
+                parkourTraps.push({ x: 2720, type: 'ground_spikes', endX: 2780, spikeHeight: 40, interval: 25,
+                    randomOffset: true });
+
+                // 2800-2900: 更多塌陷地板
+                parkourTerrain.push({ startX: 2800, endX: 2900, yOffset: 0, type: 'crumbling', crumbleDelay: 12,
+                    crumbleID: 'cr4' });
+
+                // 2900-3100: 密集平台區
+                for (let px = 2900; px < 3100; px += 45) {
+                    parkourTerrain.push({ startX: px, endX: px + 25, yOffset: -30 - Math.random() * 50, type: Math
+                            .random() < 0.3 ? 'crumbling' : 'solid',
+                        crumbleDelay: 20, crumbleID: 'cr_p' + px, isPlatform: true });
+                }
+                parkourTerrain.push({ startX: 3100, endX: 3250, yOffset: 0, type: 'solid' });
+
+                // 3250-3400: 激光+導彈組合
+                parkourTerrain.push({ startX: 3250, endX: 3400, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 3280, type: 'laser_zone', endX: 3380, laserWidth: 200, interval: 40,
+                    offsetY: 50 });
+                parkourTraps.push({ x: 3320, type: 'missile_trigger', missileCount: 3, interval: 30 });
+
+                // 3400-3550: 反向操作區（標誌提示但無實際效果，只是心理陷阱）
+                parkourTerrain.push({ startX: 3400, endX: 3550, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 3450, type: 'fake_reverse_sign' });
+
+                // 3550-3700: 天花板尖刺+地面尖刺同時
+                parkourTerrain.push({ startX: 3550, endX: 3700, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 3580, type: 'ceiling_spikes', endX: 3680, count: 10, interval: 28 });
+                parkourTraps.push({ x: 3600, type: 'ground_spikes', endX: 3670, spikeHeight: 30, interval: 28,
+                    randomOffset: true });
+
+                // 3700-3900: 地獄走廊 - 超長塌陷區+導彈
+                parkourTerrain.push({ startX: 3700, endX: 3900, yOffset: 0, type: 'crumbling', crumbleDelay: 10,
+                    crumbleID: 'cr_hell' });
+                parkourTraps.push({ x: 3750, type: 'missile_trigger', missileCount: 5, interval: 20 });
+                parkourTraps.push({ x: 3820, type: 'missile_trigger', missileCount: 3, interval: 25 });
+
+                // 3900-4100: 恢復區
+                parkourTerrain.push({ startX: 3900, endX: 4100, yOffset: 0, type: 'solid' });
+
+                // 4100-4300: 最後的激光陷阱
+                parkourTerrain.push({ startX: 4100, endX: 4300, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 4150, type: 'laser_zone', endX: 4280, laserWidth: 220, interval: 30,
+                    offsetY: 40 });
+
+                // 4300-4500: 最後衝刺區（看起來安全但有小陷阱）
+                parkourTerrain.push({ startX: 4300, endX: 4500, yOffset: 0, type: 'solid' });
+                parkourTraps.push({ x: 4380, type: 'ground_spikes', endX: 4450, spikeHeight: 25, interval: 35,
+                    randomOffset: true });
+                parkourTraps.push({ x: 4480, type: 'missile_trigger', missileCount: 2, interval: 40 });
+
+                // 4500-4700: 接近終點
+                parkourTerrain.push({ startX: 4500, endX: 4700, yOffset: 0, type: 'solid' });
+
+                // 4700-4900: 最後的塌陷
+                parkourTerrain.push({ startX: 4700, endX: 4850, yOffset: 0, type: 'crumbling', crumbleDelay: 8,
+                    crumbleID: 'cr_final' });
+                parkourTerrain.push({ startX: 4850, endX: 5000, yOffset: 0, type: 'solid' });
+
+                // 5000-5200: 終點區域
+                parkourTerrain.push({ startX: 5000, endX: PARKOUR_WORLD_LENGTH, yOffset: 0, type: 'solid' });
+                // 終點旗幟
+                parkourTraps.push({ x: PARKOUR_WORLD_LENGTH - 50, type: 'real_finish' });
+            }
+
+            function resetParkour() {
+                parkourPlayer.x = 80;
+                parkourPlayer.y = PARKOUR_GROUND_Y - 40;
+                parkourPlayer.vx = 0;
+                parkourPlayer.vy = 0;
+                parkourPlayer.onGround = false;
+                parkourPlayer.alive = true;
+                parkourPlayer.facingRight = true;
+                parkourPlayer.invincible = 0;
+                parkourPlayer.trailPositions = [];
+                parkourCameraX = 0;
+                parkourReachedEnd = false;
+                parkourEndTimer = 0;
+                parkourMissiles = [];
+                parkourLasers = [];
+                parkourFallingSpikes = [];
+                parkourTriggeredTraps = new Set();
+                buildParkourMap();
+            }
+
+            function switchToParkour() {
+                gameState = STATE.PARKOUR;
+                resetParkour();
+                parkourDeathCount = 0;
+                triggerGlitch(20);
+                triggerShake(10, 25);
+                spawnParticles(BASE_WIDTH / 2, BASE_HEIGHT / 2, 70, 'rgb(0,200,255)', 5, 30);
+                inputLeft = false;
+                inputRight = false;
+                inputJump = false;
+                inputJumpPressed = false;
+            }
+
+            function getGroundYAt(x) {
+                let groundY = PARKOUR_GROUND_Y;
+                let foundTerrain = null;
+                for (const t of parkourTerrain) {
+                    if (x >= t.startX && x < t.endX) {
+                        if (t.type === 'none') return null;
+                        if (t.type === 'crumbling' && parkourTriggeredTraps.has(t.crumbleID)) return null;
+                        foundTerrain = t;
+                        groundY = PARKOUR_GROUND_Y + t.yOffset;
+                        break;
+                    }
+                }
+                // 檢查是否有地面覆蓋
+                if (foundTerrain === null) {
+                    // 檢查是否有任何地形覆蓋這個x
+                    let covered = false;
+                    for (const t of parkourTerrain) {
+                        if (x >= t.startX && x < t.endX && t.type !== 'none') {
+                            if (t.type === 'crumbling' && parkourTriggeredTraps.has(t.crumbleID)) continue;
+                            covered = true;
+                            groundY = PARKOUR_GROUND_Y + t.yOffset;
+                            break;
+                        }
+                    }
+                    if (!covered) return null; // 缺口
+                }
+                return groundY;
+            }
+
+            function getTerrainAt(x) {
+                for (const t of parkourTerrain) {
+                    if (x >= t.startX && x < t.endX) {
+                        return t;
+                    }
+                }
+                return null;
+            }
+
+            function triggerCrumble(terrain) {
+                if (terrain.type === 'crumbling' && !parkourTriggeredTraps.has(terrain.crumbleID)) {
+                    parkourTriggeredTraps.add(terrain.crumbleID);
+                    const cx = (terrain.startX + terrain.endX) / 2;
+                    spawnParticles(cx, PARKOUR_GROUND_Y + terrain.yOffset, 25, 'rgb(180,120,60)', 3, 20);
+                }
+            }
+
+            function spawnMissile(targetX, targetY) {
+                parkourMissiles.push({
+                    x: parkourCameraX + BASE_WIDTH + 40,
+                    y: targetY - 15 + Math.random() * 40 - 20,
+                    targetX,
+                    targetY,
+                    speed: 6 + Math.random() * 5,
+                    active: true,
+                    size: 8,
+                });
+            }
+
+            function updateParkour() {
+                if (parkourReachedEnd) {
+                    parkourEndTimer--;
+                    if (parkourEndTimer <= 0 && gameState === STATE.PARKOUR) {
+                        triggerEnding();
+                    }
+                    return;
+                }
+
+                if (!parkourPlayer.alive) {
+                    // 死亡後等待一下再重生
+                    parkourEndTimer--;
+                    if (parkourEndTimer <= 0) {
+                        parkourDeathCount++;
+                        resetParkour();
+                        parkourDeathCount = parkourDeathCount; // 保留死亡計數
+                        buildParkourMap();
+                        parkourPlayer.alive = true;
+                        parkourEndTimer = 0;
+                    }
+                    return;
+                }
+
+                const p = parkourPlayer;
+                if (p.invincible > 0) p.invincible--;
+
+                // 移動
+                const moveSpeed = 4.5;
+                if (inputLeft) p.vx = -moveSpeed;
+                else if (inputRight) p.vx = moveSpeed;
+                else p.vx *= 0.8;
+
+                if (inputJumpPressed && p.onGround) {
+                    p.vy = -11;
+                    p.onGround = false;
+                    inputJumpPressed = false;
+                    spawnParticles(p.x, p.y + p.height / 2, 8, 'rgb(255,255,255)', 2, 8);
+                }
+                inputJumpPressed = false;
+
+                // 重力
+                p.vy += PARKOUR_GRAVITY;
+                if (p.vy > 15) p.vy = 15;
+
+                // 更新位置
+                p.x += p.vx;
+                p.y += p.vy;
+
+                // 邊界
+                if (p.x < 10) p.x = 10;
+                if (p.x > PARKOUR_WORLD_LENGTH - 10) p.x = PARKOUR_WORLD_LENGTH - 10;
+
+                // 地面碰撞
+                const groundY = getGroundYAt(p.x);
+                const footX = p.x;
+                const footY = p.y + p.height / 2;
+
+                p.onGround = false;
+                if (groundY !== null && footY >= groundY && p.vy >= 0) {
+                    p.y = groundY - p.height / 2;
+                    p.vy = 0;
+                    p.onGround = true;
+
+                    // 檢查是否踩到塌陷地板
+                    const terrain = getTerrainAt(p.x);
+                    if (terrain && terrain.type === 'crumbling' && !parkourTriggeredTraps.has(terrain.crumbleID)) {
+                        // 延遲觸發
+                        setTimeout(() => {
+                            triggerCrumble(terrain);
+                        }, terrain.crumbleDelay * 16);
+                    }
+                }
+
+                // 平台碰撞（僅當 falling）
+                if (p.vy >= 0 && !p.onGround) {
+                    for (const t of parkourTerrain) {
+                        if (t.isPlatform && p.x >= t.startX - 5 && p.x <= t.endX + 5) {
+                            if (t.type === 'crumbling' && parkourTriggeredTraps.has(t.crumbleID)) continue;
+                            const platY = PARKOUR_GROUND_Y + t.yOffset;
+                            const prevFootY = footY - p.vy;
+                            if (prevFootY <= platY && footY >= platY && p.vy >= 0) {
+                                p.y = platY - p.height / 2;
+                                p.vy = 0;
+                                p.onGround = true;
+                                if (t.type === 'crumbling' && !parkourTriggeredTraps.has(t.crumbleID)) {
+                                    setTimeout(() => triggerCrumble(t), t.crumbleDelay * 16);
+                                }
+                                break;
+                            }
+                        }
+                    }
+                    // 移動平台更新
+                    for (const t of parkourTerrain) {
+                        if (t.type === 'moving' && t.isPlatform) {
+                            if (!t._phase) t._phase = Math.random() * Math.PI * 2;
+                            t._phase += t.moveSpeed * 0.04;
+                            t.yOffset = Math.sin(t._phase) * t.moveRange;
+                        }
+                    }
+                }
+
+                // 掉出螢幕
+                if (p.y > BASE_HEIGHT + 150) {
+                    killPlayer('fall');
+                }
+
+                // 更新攝影機
+                const targetCamX = p.x - BASE_WIDTH * 0.35;
+                parkourCameraX += (targetCamX - parkourCameraX) * 0.12;
+                if (parkourCameraX < 0) parkourCameraX = 0;
+                if (parkourCameraX > PARKOUR_WORLD_LENGTH - BASE_WIDTH) parkourCameraX = PARKOUR_WORLD_LENGTH -
+                    BASE_WIDTH;
+
+                // 更新導彈
+                for (const missile of parkourMissiles) {
+                    if (!missile.active) continue;
+                    const dx = missile.targetX - missile.x;
+                    const dy = missile.targetY - missile.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < 5) {
+                        missile.active = false;
+                        spawnParticles(missile.x, missile.y, 15, 'rgb(255,100,0)', 4, 12);
+                    } else {
+                        missile.x += (dx / dist) * missile.speed;
+                        missile.y += (dy / dist) * missile.speed;
+                    }
+                    // 碰撞玩家
+                    if (missile.active && p.invincible <= 0 &&
+                        Math.abs(missile.x - p.x) < p.width / 2 + missile.size &&
+                        Math.abs(missile.y - p.y) < p.height / 2 + missile.size) {
+                        killPlayer('missile');
+                    }
+                }
+                parkourMissiles = parkourMissiles.filter(m => m.active || m.x > parkourCameraX - 100);
+
+                // 更新激光
+                for (const laser of parkourLasers) {
+                    if (laser.active && p.invincible <= 0 &&
+                        p.x > laser.x - laser.width / 2 && p.x < laser.x + laser.width / 2 &&
+                        p.y > laser.y && p.y < laser.y + laser.height) {
+                        killPlayer('laser');
+                    }
+                }
+                parkourLasers = parkourLasers.filter(l => l.x > parkourCameraX - 200);
+
+                // 更新掉落尖刺
+                for (const spike of parkourFallingSpikes) {
+                    spike.y += spike.vy;
+                    spike.vy += 0.3;
+                    if (spike.y > BASE_HEIGHT + 50) spike.active = false;
+                    if (spike.active && p.invincible <= 0 &&
+                        Math.abs(spike.x - p.x) < p.width / 2 + spike.width / 2 &&
+                        Math.abs(spike.y - p.y) < p.height / 2 + spike.height / 2) {
+                        killPlayer('spike');
+                    }
+                }
+                parkourFallingSpikes = parkourFallingSpikes.filter(s => s.active);
+
+                // 觸發陷阱
+                for (const trap of parkourTraps) {
+                    const trapScreenX = trap.x - parkourCameraX;
+                    if (trapScreenX > -50 && trapScreenX < BASE_WIDTH + 50 && !parkourTriggeredTraps.has(trap.x +
+                            '_trap')) {
+                        if (trap.type === 'missile_trigger' && Math.abs(p.x - trap.x) < 60) {
+                            parkourTriggeredTraps.add(trap.x + '_trap');
+                            for (let i = 0; i < trap.missileCount; i++) {
+                                setTimeout(() => {
+                                    spawnMissile(p.x, p.y);
+                                }, i * trap.interval);
+                            }
+                        }
+                        if (trap.type === 'laser_zone' && p.x > trap.x && p.x < trap.endX && !parkourTriggeredTraps
+                            .has(trap.x + '_laser_active')) {
+                            parkourTriggeredTraps.add(trap.x + '_laser_active');
+                            const activateLaser = () => {
+                                if (gameState !== STATE.PARKOUR) return;
+                                const lx = trap.x + Math.random() * (trap.endX - trap.x);
+                                parkourLasers.push({
+                                    x: lx,
+                                    y: trap.offsetY || 40,
+                                    width: trap.laserWidth,
+                                    height: BASE_HEIGHT - (trap.offsetY || 40),
+                                    active: true,
+                                    life: 18,
+                                });
+                                setTimeout(() => {
+                                    if (p.x > trap.x && p.x < trap.endX) activateLaser();
+                                }, trap.interval);
+                            };
+                            activateLaser();
+                        }
+                        if (trap.type === 'ceiling_spikes' && p.x > trap.x && p.x < trap.endX && !parkourTriggeredTraps
+                            .has(trap.x + '_ceiling')) {
+                            parkourTriggeredTraps.add(trap.x + '_ceiling');
+                            for (let i = 0; i < trap.count; i++) {
+                                setTimeout(() => {
+                                    const sx = trap.x + Math.random() * (trap.endX - trap.x);
+                                    parkourFallingSpikes.push({
+                                        x: sx,
+                                        y: -30,
+                                        vy: 2 + Math.random() * 3,
+                                        width: 12,
+                                        height: 25,
+                                        active: true,
+                                    });
+                                }, i * trap.interval);
+                            }
+                        }
+                        if (trap.type === 'ground_spikes' && p.x > trap.x && p.x < trap.endX) {
+                            if (!parkourTriggeredTraps.has(trap.x + '_gspike_loop')) {
+                                parkourTriggeredTraps.add(trap.x + '_gspike_loop');
+                                const spikeLoop = () => {
+                                    if (gameState !== STATE.PARKOUR) return;
+                                    if (p.x > trap.x && p.x < trap.endX) {
+                                        const sx = trap.randomOffset ? trap.x + Math.random() * (trap.endX - trap
+                                            .x) : p.x;
+                                        const groundHere = getGroundYAt(sx);
+                                        if (groundHere !== null && p.invincible <= 0 && Math.abs(p.x - sx) <
+                                            p.width / 2 + 10 && p.y + p.height / 2 >= groundHere - trap
+                                            .spikeHeight) {
+                                            killPlayer('ground_spike');
+                                        }
+                                        // 視覺效果
+                                        spawnParticles(sx, (groundHere || PARKOUR_GROUND_Y) - 5, 3,
+                                            'rgb(200,200,200)', 1, 6);
+                                    }
+                                    setTimeout(spikeLoop, trap.interval);
+                                };
+                                spikeLoop();
+                            }
+                        }
+                        if (trap.type === 'fake_finish' && Math.abs(p.x - trap.x) < 40 && !parkourTriggeredTraps.has(
+                                trap.x + '_fake')) {
+                            parkourTriggeredTraps.add(trap.x + '_fake');
+                            spawnParticles(trap.x, trap.y, 50, 'rgb(255,0,0)', 6, 35);
+                            triggerShake(15, 30);
+                            // 在玩家位置生成導彈
+                            for (let i = 0; i < 5; i++) {
+                                setTimeout(() => spawnMissile(p.x, p.y - 30), i * 60);
+                            }
+                        }
+                        if (trap.type === 'real_finish' && Math.abs(p.x - trap.x) < 35 && !parkourReachedEnd) {
+                            parkourReachedEnd = true;
+                            parkourEndTimer = 50;
+                            spawnParticles(trap.x, PARKOUR_GROUND_Y - 40, 80, 'rgb(255,215,0)', 7, 50);
+                            triggerFlash();
+                        }
+                    }
+                }
+
+                // 更新激光生命
+                for (const laser of parkourLasers) {
+                    laser.life--;
+                    if (laser.life <= 0) laser.active = false;
+                }
+                parkourLasers = parkourLasers.filter(l => l.active);
+
+                // 軌跡
+                if (p.vx !== 0 || !p.onGround) {
+                    p.trailPositions.push({ x: p.x, y: p.y, life: 6 });
+                }
+                for (const t of p.trailPositions) t.life--;
+                p.trailPositions = p.trailPositions.filter(t => t.life > 0);
+            }
+
+            function killPlayer(cause) {
+                if (!parkourPlayer.alive) return;
+                parkourPlayer.alive = false;
+                parkourEndTimer = 40;
+                spawnParticles(parkourPlayer.x, parkourPlayer.y, 40, 'rgb(255,50,50)', 5, 30);
+                triggerShake(8, 18);
+                // 根據死因顯示不同效果
+                if (cause === 'fall') {
+                    spawnParticles(parkourPlayer.x, BASE_HEIGHT, 20, 'rgb(100,100,255)', 2, 20);
+                }
+            }
+
+            function drawParkour(ctx) {
+                // 天空
+                const skyGrad = ctx.createLinearGradient(0, 0, 0, BASE_HEIGHT);
+                skyGrad.addColorStop(0, '#1a1a3a');
+                skyGrad.addColorStop(0.5, '#2a3a5a');
+                skyGrad.addColorStop(1, '#1a2a3a');
+                ctx.fillStyle = skyGrad;
+                ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+                // 星星
+                ctx.fillStyle = '#fff';
+                const starSeed = 42;
+                for (let i = 0; i < 60; i++) {
+                    const sx = ((i * 137 + starSeed) % BASE_WIDTH);
+                    const sy = ((i * 97 + starSeed * 3) % (BASE_HEIGHT * 0.6));
+                    const twinkle = Math.sin(Date.now() * 0.002 + i) * 0.4 + 0.6;
+                    ctx.globalAlpha = twinkle * 0.7;
+                    ctx.fillRect(sx, sy, 1.5, 1.5);
+                }
+                ctx.globalAlpha = 1;
+
+                const camX = parkourCameraX;
+
+                // 遠山
+                ctx.fillStyle = '#1a2a35';
+                ctx.beginPath();
+                ctx.moveTo(0, BASE_HEIGHT);
+                for (let x = 0; x < BASE_WIDTH; x += 40) {
+                    const wx = x + camX * 0.3;
+                    const h = 100 + Math.sin(wx * 0.008) * 40 + Math.sin(wx * 0.02) * 25;
+                    ctx.lineTo(x, BASE_HEIGHT - h);
+                }
+                ctx.lineTo(BASE_WIDTH, BASE_HEIGHT);
+                ctx.fill();
+
+                // 繪製地形
+                for (const t of parkourTerrain) {
+                    const sx = t.startX - camX;
+                    const ex = t.endX - camX;
+                    if (ex < -20 || sx > BASE_WIDTH + 20) continue;
+                    if (t.type === 'none') continue;
+                    if (t.type === 'crumbling' && parkourTriggeredTraps.has(t.crumbleID)) continue;
+
+                    const gy = PARKOUR_GROUND_Y + t.yOffset;
+                    const clipSx = Math.max(0, sx);
+                    const clipEx = Math.min(BASE_WIDTH, ex);
+
+                    if (t.isPlatform) {
+                        // 平台
+                        const platWidth = ex - sx;
+                        ctx.fillStyle = t.type === 'crumbling' ? '#8b7355' : t.type === 'moving' ? '#7b9e6b' :
+                            '#6b8b5a';
+                        ctx.fillRect(clipSx, gy - 8, clipEx - clipSx, 10);
+                        ctx.strokeStyle = '#4a6a3a';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(clipSx, gy - 8, clipEx - clipSx, 10);
+                    } else {
+                        // 地面
+                        const gWidth = clipEx - clipSx;
+                        ctx.fillStyle = '#5a8a3a';
+                        ctx.fillRect(clipSx, gy, gWidth, BASE_HEIGHT - gy);
+                        ctx.fillStyle = '#7ab848';
+                        ctx.fillRect(clipSx, gy, gWidth, 6);
+                        ctx.fillStyle = '#4a7030';
+                        ctx.fillRect(clipSx, gy + 6, gWidth, 3);
+                        // 草地紋理
+                        for (let gx = clipSx; gx < clipEx; gx += 8) {
+                            ctx.fillStyle = '#8cc855';
+                            ctx.fillRect(gx, gy - 2, 4, 4);
+                        }
+                    }
+                }
+
+                // 繪製陷阱視覺元素
+                for (const trap of parkourTraps) {
+                    const tx = trap.x - camX;
+                    if (tx < -60 || tx > BASE_WIDTH + 60) continue;
+
+                    if (trap.type === 'fake_finish') {
+                        // 假終點旗幟
+                        ctx.fillStyle = '#ff0';
+                        ctx.fillRect(tx, trap.y, 4, 80);
+                        ctx.fillStyle = '#f00';
+                        ctx.beginPath();
+                        ctx.moveTo(tx + 4, trap.y);
+                        ctx.lineTo(tx + 40, trap.y + 15);
+                        ctx.lineTo(tx + 4, trap.y + 30);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 14px "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🏁 終點?', tx + 20, trap.y - 10);
+                    }
+                    if (trap.type === 'real_finish' && !parkourReachedEnd) {
+                        ctx.fillStyle = '#ffd700';
+                        ctx.fillRect(tx, PARKOUR_GROUND_Y - 100, 6, 100);
+                        ctx.fillStyle = '#ff0';
+                        ctx.beginPath();
+                        ctx.moveTo(tx + 6, PARKOUR_GROUND_Y - 100);
+                        ctx.lineTo(tx + 50, PARKOUR_GROUND_Y - 80);
+                        ctx.lineTo(tx + 6, PARKOUR_GROUND_Y - 60);
+                        ctx.fill();
+                        ctx.fillStyle = '#fff';
+                        ctx.font = 'bold 16px "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🏆 真·終點', tx + 35, PARKOUR_GROUND_Y - 110);
+                    }
+                    if (trap.type === 'fake_reverse_sign') {
+                        ctx.fillStyle = '#ff0';
+                        ctx.font = 'bold 20px "Noto Sans TC", sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('⚠️ 方向反轉 ⚠️', tx, PARKOUR_GROUND_Y - 60);
+                    }
+                    if (trap.type === 'invisible_block' && !parkourTriggeredTraps.has(trap.x + '_shown')) {
+                        // 隱形方塊（不可見直到玩家撞到）
+                        const px = parkourPlayer.x;
+                        const py = parkourPlayer.y;
+                        if (Math.abs(px - trap.x) < trap.width && py - parkourPlayer.height / 2 < trap.y + trap
+                            .height && py + parkourPlayer.height / 2 > trap.y) {
+                            parkourTriggeredTraps.add(trap.x + '_shown');
+                            spawnParticles(trap.x, trap.y, 10, 'rgb(255,255,0)', 3, 10);
+                        }
+                    }
+                }
+
+                // 繪製導彈
+                for (const missile of parkourMissiles) {
+                    if (!missile.active) continue;
+                    const mx = missile.x - camX;
+                    if (mx < -30 || mx > BASE_WIDTH + 30) continue;
+                    ctx.fillStyle = '#ff3333';
+                    ctx.beginPath();
+                    ctx.moveTo(mx + missile.size, missile.y);
+                    ctx.lineTo(mx - missile.size, missile.y - missile.size * 0.7);
+                    ctx.lineTo(mx - missile.size, missile.y + missile.size * 0.7);
+                    ctx.fill();
+                    ctx.fillStyle = '#ff8800';
+                    ctx.beginPath();
+                    ctx.arc(mx - missile.size * 0.5, missile.y, missile.size * 0.6, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 繪製激光
+                for (const laser of parkourLasers) {
+                    if (!laser.active) continue;
+                    const lx = laser.x - camX;
+                    if (lx < -laser.width || lx > BASE_WIDTH + laser.width) continue;
+                    const alpha = laser.life / 18;
+                    const grad = ctx.createLinearGradient(lx - laser.width / 2, 0, lx + laser.width / 2, 0);
+                    grad.addColorStop(0, `rgba(255,0,0,0)`);
+                    grad.addColorStop(0.3, `rgba(255,50,50,${alpha})`);
+                    grad.addColorStop(0.5, `rgba(255,255,255,${alpha})`);
+                    grad.addColorStop(0.7, `rgba(255,50,50,${alpha})`);
+                    grad.addColorStop(1, `rgba(255,0,0,0)`);
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(lx - laser.width / 2, laser.y, laser.width, laser.height);
+                }
+
+                // 繪製掉落尖刺
+                for (const spike of parkourFallingSpikes) {
+                    if (!spike.active) continue;
+                    const sx = spike.x - camX;
+                    if (sx < -20 || sx > BASE_WIDTH + 20) continue;
+                    ctx.fillStyle = '#ccc';
+                    ctx.beginPath();
+                    ctx.moveTo(sx, spike.y + spike.height);
+                    ctx.lineTo(sx - spike.width / 2, spike.y);
+                    ctx.lineTo(sx + spike.width / 2, spike.y);
+                    ctx.fill();
+                    ctx.strokeStyle = '#888';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 繪製玩家軌跡
+                for (const trail of parkourPlayer.trailPositions) {
+                    const tx = trail.x - camX;
+                    const alpha = trail.life / 6;
+                    ctx.fillStyle = `rgba(150,200,255,${alpha*0.5})`;
+                    ctx.beginPath();
+                    ctx.arc(tx, trail.y, parkourPlayer.width * 0.35, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                // 繪製玩家
+                const p = parkourPlayer;
+                const px = p.x - camX;
+                const py = p.y;
+                if (p.alive && p.invincible % 6 < 3) {
+                    // 身體
+                    ctx.fillStyle = '#ff6644';
+                    ctx.fillRect(px - p.width / 2, py - p.height / 2, p.width, p.height);
+                    // 頭
+                    ctx.fillStyle = '#ffcc99';
+                    ctx.beginPath();
+                    ctx.arc(px, py - p.height / 2 - 6, p.width * 0.4, 0, Math.PI * 2);
+                    ctx.fill();
+                    // 眼睛
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(px + 4, py - p.height / 2 - 10, 4, 5);
+                    ctx.fillRect(px - 8, py - p.height / 2 - 10, 4, 5);
+                    // 帽子
+                    ctx.fillStyle = '#ff3333';
+                    ctx.fillRect(px - p.width * 0.45, py - p.height / 2 - 16, p.width * 0.9, 8);
+                    // 腳
+                    ctx.fillStyle = '#333';
+                    ctx.fillRect(px - p.width / 2 + 2, py + p.height / 2 - 6, 8, 6);
+                    ctx.fillRect(px + p.width / 2 - 10, py + p.height / 2 - 6, 8, 6);
+                }
+
+                // 死亡粒子
+                if (!p.alive) {
+                    const alpha = Math.max(0, parkourEndTimer / 40);
+                    ctx.fillStyle = `rgba(255,0,0,${alpha})`;
+                    ctx.font = 'bold 28px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('💀 你死了！', px, py - 30);
+                }
+
+                // 到達終點
+                if (parkourReachedEnd) {
+                    const alpha = Math.min(1, (50 - parkourEndTimer) / 20);
+                    ctx.fillStyle = `rgba(255,215,0,${alpha})`;
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 36px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎉 恭喜過關！ 🎉', BASE_WIDTH / 2, BASE_HEIGHT / 2 - 20);
+                    ctx.fillText('準備迎接驚喜...', BASE_WIDTH / 2, BASE_HEIGHT / 2 + 30);
+                }
+
+                // HUD
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 14px monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText(`死亡次數: ${parkourDeathCount}`, 15, 25);
+                ctx.fillText(`進度: ${Math.floor(p.x/PARKOUR_WORLD_LENGTH*100)}%`, 15, 48);
+                const distToEnd = Math.max(0, PARKOUR_WORLD_LENGTH - p.x);
+                ctx.fillText(`剩餘: ${Math.floor(distToEnd)}m`, 15, 71);
+
+                // 進度條
+                const progBarX = 15;
+                const progBarY = 80;
+                const progBarW = 200;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(progBarX, progBarY, progBarW, 8);
+                const progress = Math.min(1, p.x / PARKOUR_WORLD_LENGTH);
+                const progGrad = ctx.createLinearGradient(progBarX, 0, progBarX + progBarW, 0);
+                progGrad.addColorStop(0, '#ff0');
+                progGrad.addColorStop(1, '#f80');
+                ctx.fillStyle = progGrad;
+                ctx.fillRect(progBarX, progBarY, progBarW * progress, 8);
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(progBarX, progBarY, progBarW, 8);
+            }
+
+            // ==================== 結局：巨石強森梗圖 ====================
+            function triggerEnding() {
+                gameState = STATE.ENDING;
+                overlay.classList.add('active');
+                // 使用巨石強森經典挑眉表情包
+                const rockImages = [
+                    'https://upload.wikimedia.org/wikipedia/en/thumb/1/1f/Dwayne_Johnson_2014_%28cropped%29.jpg/220px-Dwayne_Johnson_2014_%28cropped%29.jpg',
+                    'https://i.imgflip.com/1bij.jpg',
+                    'https://i.kym-cdn.com/entries/icons/original/000/028/207/Screen_Shot_2019-01-17_at_4.22.43_PM.jpg',
+                ];
+                // 使用較可靠的圖片
+                overlayImg.src =
+                    'https://i.imgflip.com/1bij.jpg';
+                overlayImg.onerror = function() {
+                    // 備用：使用文字+emoji
+                    overlayImg.style.display = 'none';
+                    overlayText.textContent = '🪨 巨石強森說：\n「你以為你贏了嗎？\nCan you smell what The Rock is cooking?」\n💪😏';
+                    overlayText.style.fontSize = 'clamp(18px,3vw,28px)';
+                };
+                overlayImg.onload = function() {
+                    overlayImg.style.display = 'block';
+                    overlayText.textContent = '🪨 The Rock 覺得你很棒！😏💪';
+                };
+                overlayText.style.display = 'block';
+
+                // 點擊關閉
+                overlay.onclick = function() {
+                    overlay.classList.remove('active');
+                    overlayImg.style.display = 'block';
+                    overlayText.style.display = 'none';
+                    resetAllGames();
+                };
+                overlay.style.pointerEvents = 'all';
+            }
+
+            function resetAllGames() {
+                gameState = STATE.TICTACTOE;
+                resetTicTacToe();
+                resetRacing();
+                resetParkour();
+                parkourDeathCount = 0;
+                buildParkourMap();
+                particles = [];
+                transitionAlpha = 0;
+                transitionType = '';
+                shakeAmount = 0;
+                glitchLines = [];
+                stateTimer = 0;
+                overlay.classList.remove('active');
+                overlay.style.pointerEvents = 'none';
+                overlayImg.style.display = 'block';
+                overlayText.style.display = 'none';
+            }
+
+            // ==================== 主遊戲循環 ====================
+            function update() {
+                updateTransition();
+                updateParticles(1);
+
+                if (gameState === STATE.TICTACTOE) {
+                    if (tttFlashTimer > 0) tttFlashTimer--;
+                } else if (gameState === STATE.RACING) {
+                    updateRacing();
+                } else if (gameState === STATE.PARKOUR) {
+                    updateParkour();
+                }
+            }
+
+            function render() {
+                ctx.clearRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+
+                const needsRestore = applyScreenShake(ctx);
+
+                if (gameState === STATE.TICTACTOE) {
+                    drawTicTacToe(ctx);
+                } else if (gameState === STATE.RACING) {
+                    drawRacing(ctx);
+                } else if (gameState === STATE.PARKOUR) {
+                    drawParkour(ctx);
+                } else if (gameState === STATE.ENDING) {
+                    // 黑屏
+                    ctx.fillStyle = '#000';
+                    ctx.fillRect(0, 0, BASE_WIDTH, BASE_HEIGHT);
+                    ctx.fillStyle = '#fff';
+                    ctx.font = 'bold 30px "Noto Sans TC", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('🎬 遊戲結束 🎬', BASE_WIDTH / 2, BASE_HEIGHT / 2);
+                }
+
+                drawParticles(ctx);
+                drawGlitchOverlay(ctx);
+
+                if (needsRestore) {
+                    ctx.restore();
+                }
+
+                // 遊戲狀態標籤
+                ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                ctx.font = '11px monospace';
+                ctx.textAlign = 'right';
+                const stateNames = {
+                    'tictactoe': '遊戲1: 圈圈叉叉',
+                    'racing': '遊戲2: 極速賽車',
+                    'parkour': '遊戲3: 地獄跑酷',
+                    'ending': '結局'
+                };
+                ctx.fillText(stateNames[gameState] || '', BASE_WIDTH - 15, BASE_HEIGHT - 10);
+            }
+
+            function gameLoop() {
+                update();
+                render();
+                requestAnimationFrame(gameLoop);
+            }
+
+            // ==================== 初始化 ====================
+            function init() {
+                resizeCanvas();
+                updateCanvasOffset();
+                resetTicTacToe();
+                resetRacing();
+                buildParkourMap();
+                resetParkour();
+                parkourDeathCount = 0;
+                gameState = STATE.TICTACTOE;
+                particles = [];
+                overlay.classList.remove('active');
+                overlay.style.pointerEvents = 'none';
+                overlayImg.style.display = 'block';
+                overlayText.style.display = 'none';
+                requestAnimationFrame(gameLoop);
+            }
+
+            // 處理窗口大小變化
+            window.addEventListener('resize', () => {
+                resizeCanvas();
+                updateCanvasOffset();
+            });
+
+            // 防止移動端滾動
+            document.addEventListener('touchmove', function(e) {
+                if (e.target.closest('#game-container')) {
+                    e.preventDefault();
+                }
+            }, { passive: false });
+
+            // 啟動遊戲
+            init();
+
+            console.log('🎮 三合一終極遊戲已就緒！');
+            console.log('📋 遊戲流程：圈圈叉叉 → 賽車 → 跑酷 → 巨石強森');
+            console.log('🕹️ 控制：鍵盤方向鍵/WASD + 空白鍵跳躍，或使用螢幕按鈕');
+            console.log('💡 提示：機器人必輸，但你快贏時會切換到下一關！');
+            console.log('🏃 跑酷地圖長度：' + PARKOUR_WORLD_LENGTH + 'px，充滿初見殺陷阱！');
+        })();
+    </script>
+</body>
+</html>
