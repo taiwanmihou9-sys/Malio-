@@ -7,14 +7,10 @@
   <style>
     :root {
       --bg: #0b0b1a;
-      --surface: #1a1a30;
       --accent: #ff6b6b;
       --gold: #ffd93d;
-      --cyan: #4ecdc4;
-      --danger: #ff4757;
       --btn-size: 56px;
       --jump-btn-size: 72px;
-      --radius: 24px;
     }
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -39,7 +35,7 @@
       gap: 10px;
       max-width: 100vw;
       max-height: 100vh;
-      background: rgba(0,0,0,0.25);
+      background: rgba(0,0,0,0.3);
       border-radius: 32px;
       padding: 10px 12px 16px;
       backdrop-filter: blur(12px);
@@ -47,10 +43,10 @@
     }
     canvas {
       display: block;
-      border: 3px solid rgba(255,255,255,0.15);
+      border: 3px solid rgba(255,255,255,0.2);
       border-radius: 20px;
       background: #0f0f1f;
-      box-shadow: 0 0 40px rgba(255,100,80,0.25), 0 0 80px rgba(0,200,255,0.15);
+      box-shadow: 0 0 40px rgba(255,100,80,0.3), 0 0 80px rgba(0,200,255,0.2);
       max-width: 95vw;
       max-height: 66vh;
       cursor: pointer;
@@ -67,8 +63,8 @@
     .ctrl-btn {
       width: var(--btn-size); height: var(--btn-size);
       border-radius: 50%;
-      border: 2px solid rgba(255,255,255,0.2);
-      background: rgba(25,25,45,0.85);
+      border: 2px solid rgba(255,255,255,0.25);
+      background: rgba(25,25,45,0.9);
       backdrop-filter: blur(8px);
       color: #fff; font-size: 26px; font-weight: bold;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -76,22 +72,21 @@
       box-shadow: 0 6px 18px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1);
       -webkit-tap-highlight-color: transparent;
     }
-    .ctrl-btn:active { background: rgba(255,70,70,0.5); border-color: var(--accent); transform: scale(0.88); box-shadow: 0 2px 8px rgba(255,100,100,0.7); }
+    .ctrl-btn:active { background: rgba(255,70,70,0.6); border-color: var(--accent); transform: scale(0.88); }
     .jump-btn {
       width: var(--jump-btn-size); height: var(--jump-btn-size);
       font-size: 22px; font-weight: 800; letter-spacing: 1px;
-      border-color: var(--gold); background: rgba(255,140,0,0.15);
-      box-shadow: 0 0 25px rgba(255,200,0,0.5), inset 0 1px 0 rgba(255,255,200,0.2);
+      border-color: var(--gold); background: rgba(255,140,0,0.2);
+      box-shadow: 0 0 25px rgba(255,200,0,0.6), inset 0 1px 0 rgba(255,255,200,0.2);
       color: #ffeaa7;
     }
-    .jump-btn:active { background: #ff8800; border-color: #fff; box-shadow: 0 0 35px #ff8800; color: #fff; transform: scale(0.85); }
-    .dir-btn { background: rgba(30,144,255,0.12); border-color: rgba(100,200,255,0.3); color: #b0e0ff; }
-    .dir-btn:active { background: rgba(30,144,255,0.5); border-color: #4dc9f6; box-shadow: 0 0 28px #4dc9f6; }
+    .jump-btn:active { background: #ff8800; border-color: #fff; box-shadow: 0 0 35px #ff8800; }
+    .dir-btn { background: rgba(30,144,255,0.15); border-color: rgba(100,200,255,0.4); color: #b0e0ff; }
+    .dir-btn:active { background: rgba(30,144,255,0.6); }
     @media (max-width: 600px) {
       :root { --btn-size: 48px; --jump-btn-size: 64px; }
       .ctrl-btn { font-size: 22px; } .jump-btn { font-size: 18px; }
-      canvas { border-radius: 14px; border-width: 2px; }
-      #game-container { border-radius: 24px; padding: 6px 8px 12px; gap: 8px; }
+      canvas { border-radius: 14px; }
     }
   </style>
 </head>
@@ -100,14 +95,14 @@
   <canvas id="gameCanvas"></canvas>
   <div id="controls">
     <div class="ctrl-group">
-      <button class="ctrl-btn dir-btn" id="btn-left" title="向左移動">◀</button>
-      <button class="ctrl-btn dir-btn" id="btn-right" title="向右移動">▶</button>
+      <button class="ctrl-btn dir-btn" id="btn-left">◀</button>
+      <button class="ctrl-btn dir-btn" id="btn-right">▶</button>
     </div>
-    <button class="ctrl-btn jump-btn" id="btn-jump" title="跳躍 (空白鍵)">跳</button>
+    <button class="ctrl-btn jump-btn" id="btn-jump">跳</button>
   </div>
 </div>
-<div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:100; align-items:center; justify-content:center; flex-direction:column;">
-  <img id="overlay-img" src="" alt="巨石強森" style="max-width:85vw; max-height:60vh; border-radius:24px; box-shadow:0 0 60px rgba(255,200,0,0.8);">
+<div id="overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:100; align-items:center; justify-content:center; flex-direction:column;">
+  <img id="overlay-img" src="" alt="巨石強森" style="max-width:85vw; max-height:60vh; border-radius:24px; box-shadow:0 0 60px rgba(255,200,0,0.9);">
   <div id="overlay-text" style="color:#fff; font-size:clamp(20px,4vw,32px); font-weight:900; text-align:center; margin-top:16px; text-shadow:0 0 20px #ff0;"></div>
 </div>
 
@@ -123,7 +118,7 @@
   const btnJump = document.getElementById('btn-jump');
 
   const BASE_W = 800, BASE_H = 500;
-  let scale = 1, canvasOffsetX = 0, canvasOffsetY = 0;
+  let scale = 1;
 
   function resizeCanvas() {
     const maxW = Math.min(window.innerWidth * 0.94, 800);
@@ -134,12 +129,11 @@
     else { w = maxW; h = w / aspect; }
     canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
     canvas.width = BASE_W; canvas.height = BASE_H;
-    const rect = canvas.getBoundingClientRect();
-    scale = rect.width / BASE_W;
-    canvasOffsetX = rect.left; canvasOffsetY = rect.top;
+    scale = w / BASE_W;
   }
   window.addEventListener('resize', resizeCanvas);
   window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 200));
+  resizeCanvas();
 
   function getCanvasPos(e) {
     const rect = canvas.getBoundingClientRect();
@@ -188,9 +182,9 @@
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       particles.push({
-        x, y, vx: Math.cos(angle) * speed * (0.5 + Math.random()),
-        vy: Math.sin(angle) * speed * (0.5 + Math.random()),
-        life: life * (0.6 + Math.random() * 0.8), maxLife: life, color, size: 1.5 + Math.random() * 3.5
+        x, y, vx: Math.cos(angle) * speed * (0.4 + Math.random()),
+        vy: Math.sin(angle) * speed * (0.4 + Math.random()),
+        life: life * (0.5 + Math.random()), maxLife: life, color, size: 1.5 + Math.random() * 4
       });
     }
   }
@@ -209,121 +203,121 @@
       if (transitionType === 'shake') { shakeAmount *= 0.85; if (stateTimer <= 0) shakeAmount = 0; }
     } else { shakeAmount = 0; transitionAlpha = 0; transitionType = ''; }
   }
+
   function applyShake(ctx) {
-    if (shakeAmount > 0.5) { const sx = (Math.random()-0.5)*shakeAmount*2; const sy = (Math.random()-0.5)*shakeAmount*2; ctx.save(); ctx.translate(sx, sy); return true; }
+    if (shakeAmount > 0.5) {
+      const sx = (Math.random()-0.5)*shakeAmount*2, sy = (Math.random()-0.5)*shakeAmount*2;
+      ctx.save(); ctx.translate(sx, sy); return true;
+    }
     return false;
   }
 
-  // ==================== 遊戲1：智力測試 (圈圈叉叉) ====================
-  const CELL = 120, OX = (BASE_W - CELL*3)/2, OY = (BASE_H - CELL*3)/2 + 25;
-  let tttBoard = Array(9).fill(null), tttPlayerTurn = true, tttGameOver = false, tttSwitchTriggered = false, tttFlashTimer = 0;
+  // ==================== 智力測試 (圈圈叉叉) ====================
+  const CELL = 120, OX = (BASE_W - CELL*3)/2, OY = (BASE_H - CELL*3)/2 + 30;
+  let tttBoard = Array(9).fill(null), tttPlayerTurn = true, tttGameOver = false, tttSwitchTriggered = false;
 
-  function resetTTT() { tttBoard = Array(9).fill(null); tttPlayerTurn = true; tttGameOver = false; tttSwitchTriggered = false; tttFlashTimer = 0; }
+  function resetTTT() { tttBoard = Array(9).fill(null); tttPlayerTurn = true; tttGameOver = false; tttSwitchTriggered = false; }
+
   function checkWin(b) {
     const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     for (const [a,b2,c] of lines) if (b[a] && b[a]===b[b2] && b[a]===b[c]) return {winner: b[a], cells: [a,b2,c]};
     return null;
   }
-  function findWinningMove(player) {
-    const lines = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    for (const [a,b,c] of lines) {
-      const vals = [tttBoard[a],tttBoard[b],tttBoard[c]];
-      if (vals.filter(v=>v===player).length===2 && vals.includes(null)) return [a,b,c][vals.indexOf(null)];
-    }
-    return null;
-  }
+
   function botMove() {
     if (tttGameOver || tttSwitchTriggered) return;
     const available = tttBoard.reduce((a,v,i)=> v===null ? a.concat(i) : a, []);
     if (!available.length) return;
-    const playerWin = findWinningMove('O'), botWin = findWinningMove('X');
-    let nonBlock = available.filter(i => i!==playerWin && i!==botWin);
-    if (nonBlock.length) tttBoard[nonBlock[Math.floor(Math.random()*nonBlock.length)]] = 'X';
-    else if (available.length) { const nonWin = available.filter(i=>i!==botWin); if (nonWin.length) tttBoard[nonWin[Math.floor(Math.random()*nonWin.length)]]='X'; else tttBoard[available[Math.floor(Math.random()*available.length)]]='X'; }
-    const res = checkWin(tttBoard);
-    if (res) { tttGameOver = true; } else if (tttBoard.every(v=>v)) { tttGameOver = true; }
+    const playerWin = (()=>{for(let l of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]){const v=[tttBoard[l[0]],tttBoard[l[1]],tttBoard[l[2]]];if(v.filter(x=>x==='O').length===2&&v.includes(null))return l[v.indexOf(null)];}return null;})();
+    const botWin = (()=>{for(let l of [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]]){const v=[tttBoard[l[0]],tttBoard[l[1]],tttBoard[l[2]]];if(v.filter(x=>x==='X').length===2&&v.includes(null))return l[v.indexOf(null)];}return null;})();
+    let move = available.find(i => i!==playerWin && i!==botWin);
+    if (move === undefined) move = available.find(i => i!==botWin) || available[0];
+    tttBoard[move] = 'X';
     tttPlayerTurn = true;
+    if (checkWin(tttBoard) || tttBoard.every(v=>v)) tttGameOver = true;
   }
+
   function handleTicTacToeClick(pos) {
     if (!tttPlayerTurn || tttGameOver || tttSwitchTriggered) return;
     const col = Math.floor((pos.x - OX)/CELL), row = Math.floor((pos.y - OY)/CELL), idx = row*3+col;
     if (col<0||col>2||row<0||row>2||tttBoard[idx]!==null) return;
     tttBoard[idx] = 'O'; tttPlayerTurn = false;
-    spawnParticles(OX+col*CELL+CELL/2, OY+row*CELL+CELL/2, 8, 'rgb(100,255,100)', 2, 10);
+    spawnParticles(OX+col*CELL+CELL/2, OY+row*CELL+CELL/2, 10, '#5f5', 3, 12);
     const win = checkWin(tttBoard);
     if (win && win.winner === 'O') {
-      tttSwitchTriggered = true; tttFlashTimer = 25;
-      triggerFlash(); triggerShake(8,20);
-      spawnParticles(OX+(win.cells[0]%3)*CELL+CELL/2, OY+Math.floor(win.cells[0]/3)*CELL+CELL/2, 45, 'rgb(255,200,50)', 3, 25);
-      setTimeout(() => { if (gameState === STATE.TICTACTOE) switchToRacing(); }, 800);
+      tttSwitchTriggered = true; triggerFlash(); triggerShake(8,20);
+      spawnParticles(OX+(win.cells[0]%3)*CELL+CELL/2, OY+Math.floor(win.cells[0]/3)*CELL+CELL/2, 50, '#ff0', 4, 30);
+      setTimeout(() => { if (gameState === STATE.TICTACTOE) switchToRacing(); }, 900);
       return;
     }
-    if (tttBoard.every(v=>v)) { tttSwitchTriggered = true; setTimeout(() => { if (gameState === STATE.TICTACTOE) switchToRacing(); }, 600); return; }
-    setTimeout(() => { if (!tttSwitchTriggered && gameState === STATE.TICTACTOE) botMove(); }, 350);
+    if (tttBoard.every(v=>v)) { tttSwitchTriggered = true; setTimeout(() => { if (gameState === STATE.TICTACTOE) switchToRacing(); }, 700); return; }
+    setTimeout(() => { if (!tttSwitchTriggered && gameState === STATE.TICTACTOE) botMove(); }, 300);
   }
+
   function drawTTT(ctx) {
     ctx.fillStyle = '#0f0f24'; ctx.fillRect(0,0,BASE_W,BASE_H);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 28px "Noto Sans TC"'; ctx.textAlign = 'center';
-    ctx.fillText('🧠 智力測試 🧠', BASE_W/2, 45);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 30px "Noto Sans TC"'; ctx.textAlign = 'center';
+    ctx.fillText('🧠 智力測試 🧠', BASE_W/2, 48);
     for (let r=0; r<3; r++) for (let c=0; c<3; c++) {
       const idx = r*3+c;
       ctx.fillStyle = '#1e1e36';
       if (tttBoard[idx]==='O') ctx.fillStyle = '#1f3b2c';
       if (tttBoard[idx]==='X') ctx.fillStyle = '#3b1f1f';
       ctx.fillRect(OX+c*CELL+3, OY+r*CELL+3, CELL-6, CELL-6);
-      ctx.strokeStyle = '#4a4a6a'; ctx.lineWidth = 2; ctx.strokeRect(OX+c*CELL+3, OY+r*CELL+3, CELL-6, CELL-6);
+      ctx.strokeStyle = '#5a5a7a'; ctx.lineWidth = 2; ctx.strokeRect(OX+c*CELL+3, OY+r*CELL+3, CELL-6, CELL-6);
     }
-    ctx.strokeStyle = '#666'; ctx.lineWidth = 3;
+    ctx.strokeStyle = '#888'; ctx.lineWidth = 3;
     for (let i=1; i<3; i++) { ctx.beginPath(); ctx.moveTo(OX+i*CELL, OY+5); ctx.lineTo(OX+i*CELL, OY+CELL*3-5); ctx.stroke(); ctx.beginPath(); ctx.moveTo(OX+5, OY+i*CELL); ctx.lineTo(OX+CELL*3-5, OY+i*CELL); ctx.stroke(); }
     for (let r=0; r<3; r++) for (let c=0; c<3; c++) {
       const cx = OX + c*CELL + CELL/2, cy = OY + r*CELL + CELL/2;
       if (tttBoard[r*3+c] === 'O') { ctx.strokeStyle = '#5f5'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(cx,cy,CELL*0.33,0,Math.PI*2); ctx.stroke(); }
       if (tttBoard[r*3+c] === 'X') { ctx.strokeStyle = '#f55'; ctx.lineWidth = 5; const s = CELL*0.3; ctx.beginPath(); ctx.moveTo(cx-s,cy-s); ctx.lineTo(cx+s,cy+s); ctx.stroke(); ctx.beginPath(); ctx.moveTo(cx+s,cy-s); ctx.lineTo(cx-s,cy+s); ctx.stroke(); }
     }
-    if (tttFlashTimer > 0) tttFlashTimer--;
   }
 
-  // ==================== 遊戲2：賽車 (難度調低，碰撞反饋明顯) ====================
-  const ROAD_L = 180, ROAD_R = 620, LANE_W = (ROAD_R-ROAD_L)/3, FINISH_DIST = 2800, SWITCH_DIST = 2400;
+  // ==================== 賽車 (碰撞明顯) ====================
+  const ROAD_L = 180, ROAD_R = 620, LANE_W = (ROAD_R-ROAD_L)/3;
   let racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:5, invincible:0 };
 
   function resetRacing() {
     racing = { lane:1, x: ROAD_L+LANE_W*1.5, y: BASE_H-90, speed:4, dist:0, obstacles:[], countdown:3, countTimer:60, started:false, switchTriggered:false, flashTimer:0, markers:[], lives:5, invincible:0 };
     for (let i=0; i<20; i++) racing.markers.push({y: i*150});
   }
-  function switchToRacing() { gameState = STATE.RACING; resetRacing(); inputLeft=inputRight=inputJump=false; triggerFlash(); spawnParticles(BASE_W/2, BASE_H/2, 50, 'rgb(0,200,255)', 4, 20); }
+  function switchToRacing() { gameState = STATE.RACING; resetRacing(); inputLeft=inputRight=inputJump=false; triggerFlash(); }
 
   function updateRacing() {
     if (racing.switchTriggered) { racing.flashTimer--; if (racing.flashTimer <= 0) switchToParkour(); return; }
-    if (!racing.started) { racing.countTimer--; if (racing.countTimer<=0) { racing.countdown--; racing.countTimer=45; if (racing.countdown<=0) { racing.started=true; spawnParticles(BASE_W/2, BASE_H/2, 40, 'rgb(255,255,0)', 5, 15); } } return; }
+    if (!racing.started) { racing.countTimer--; if (racing.countTimer<=0) { racing.countdown--; racing.countTimer=45; if (racing.countdown<=0) { racing.started=true; spawnParticles(BASE_W/2, BASE_H/2, 50, '#ff0', 5, 20); } } return; }
     if (racing.invincible > 0) racing.invincible--;
-    if (inputLeft && racing.lane>0) { racing.lane--; inputLeft=false; spawnParticles(racing.x, racing.y+20, 5, 'rgb(255,255,255)', 2, 6); }
-    if (inputRight && racing.lane<2) { racing.lane++; inputRight=false; spawnParticles(racing.x, racing.y+20, 5, 'rgb(255,255,255)', 2, 6); }
+    if (inputLeft && racing.lane>0) { racing.lane--; inputLeft=false; spawnParticles(racing.x, racing.y+20, 6, '#fff', 2, 8); }
+    if (inputRight && racing.lane<2) { racing.lane++; inputRight=false; spawnParticles(racing.x, racing.y+20, 6, '#fff', 2, 8); }
     racing.x = ROAD_L + LANE_W*(racing.lane+0.5);
     racing.dist += racing.speed;
     racing.speed = Math.min(8, racing.speed+0.002);
     racing.markers.forEach(m => { m.y += racing.speed; if (m.y > BASE_H+50) m.y -= 3000; });
-    if (Math.random() < 0.02 + racing.speed*0.004) {
+    if (Math.random() < 0.025 + racing.speed*0.005) {
       const lane = Math.floor(Math.random()*3);
-      racing.obstacles.push({ lane, y: -70, w: LANE_W*0.6, h: 40, color: '#ff4444', type:'car' });
-      if (Math.random()<0.35) racing.obstacles.push({ lane: (lane+1)%3, y: -100, w: LANE_W*0.6, h: 40, color: '#ff8800', type:'truck' });
+      racing.obstacles.push({ lane, y: -70, w: LANE_W*0.7, h: 40, color: '#f44', type:'car' });
+      if (Math.random()<0.4) racing.obstacles.push({ lane: (lane+1)%3, y: -110, w: LANE_W*0.7, h: 40, color: '#f80', type:'truck' });
     }
-    racing.obstacles.forEach(o => o.y += racing.speed + 0.6);
-    racing.obstacles = racing.obstacles.filter(o => o.y < BASE_H+120);
+    racing.obstacles.forEach(o => o.y += racing.speed + 0.5);
+    racing.obstacles = racing.obstacles.filter(o => o.y < BASE_H+130);
     for (const o of racing.obstacles) {
       const ox = ROAD_L + o.lane*LANE_W + (LANE_W - o.w)/2;
-      if (Math.abs(racing.x - ox) < 38 && Math.abs(racing.y - o.y) < 50 && racing.invincible<=0) {
-        racing.lives--; racing.invincible = 45; racing.speed = Math.max(2, racing.speed-2.5);
-        spawnParticles(racing.x, racing.y, 35, 'rgb(255,100,0)', 5, 25);
-        triggerShake(12, 18);
+      const oyCenter = o.y + o.h/2;
+      if (Math.abs(racing.x - ox) < 42 && Math.abs(racing.y - oyCenter) < 48 && racing.invincible<=0) {
+        racing.lives--; racing.invincible = 50; racing.speed = Math.max(1.5, racing.speed-3);
+        spawnParticles(racing.x, racing.y, 45, '#f60', 6, 30);
+        triggerShake(14, 20);
         o.y = BASE_H+200;
         if (racing.lives <= 0) { resetRacing(); racing.started = true; }
       }
     }
-    if (racing.dist >= SWITCH_DIST && !racing.switchTriggered) { racing.switchTriggered = true; racing.flashTimer = 35; triggerFlash(); triggerShake(12, 30); }
+    if (racing.dist >= 2400 && !racing.switchTriggered) { racing.switchTriggered = true; racing.flashTimer = 35; triggerFlash(); triggerShake(15, 35); }
   }
+
   function drawRacing(ctx) {
-    const grad = ctx.createLinearGradient(0,0,0,BASE_H); grad.addColorStop(0,'#0b1a2f'); grad.addColorStop(1,'#1a2f44');
+    const grad = ctx.createLinearGradient(0,0,0,BASE_H); grad.addColorStop(0,'#0a1a30'); grad.addColorStop(1,'#1a2f44');
     ctx.fillStyle = grad; ctx.fillRect(0,0,BASE_W,BASE_H);
     ctx.fillStyle = '#222'; ctx.fillRect(ROAD_L-8,0,ROAD_R-ROAD_L+16,BASE_H);
     ctx.fillStyle = '#333'; ctx.fillRect(ROAD_L,0,ROAD_R-ROAD_L,BASE_H);
@@ -333,18 +327,19 @@
     racing.markers.forEach(m => { ctx.fillStyle='#ff0'; ctx.fillRect(ROAD_L+10,m.y,20,4); ctx.fillRect(ROAD_R-30,m.y,20,4); });
     racing.obstacles.forEach(o => { const ox = ROAD_L+o.lane*LANE_W+(LANE_W-o.w)/2; ctx.fillStyle=o.color; ctx.fillRect(ox,o.y,o.w,o.h); ctx.fillStyle='#222'; ctx.fillRect(ox+6,o.y+6,o.w-12,o.h-12); });
     const px = racing.x, py = racing.y;
-    ctx.fillStyle = '#00aaff'; ctx.beginPath(); ctx.roundRect(px-18, py-32, 36, 64, 6); ctx.fill(); ctx.strokeStyle='#0088cc'; ctx.lineWidth=3; ctx.stroke();
-    ctx.fillStyle = '#88ddff'; ctx.fillRect(px-12, py-22, 24, 16);
+    ctx.fillStyle = '#00aaff'; ctx.beginPath(); ctx.roundRect(px-20, py-34, 40, 68, 8); ctx.fill(); ctx.strokeStyle='#0088cc'; ctx.lineWidth=3; ctx.stroke();
+    ctx.fillStyle = '#88ddff'; ctx.fillRect(px-14, py-24, 28, 18);
     if (!racing.started) { ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,BASE_W,BASE_H); ctx.fillStyle='#fff'; ctx.font='bold 72px "Noto Sans TC"'; ctx.textAlign='center'; ctx.fillText(racing.countdown>0?String(racing.countdown):'GO!', BASE_W/2, BASE_H/2); }
     ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'right';
     ctx.fillText(`❤️ ${racing.lives}  距離: ${Math.floor(racing.dist)}m`, BASE_W-20, 25);
   }
 
-  // ==================== 遊戲3：地獄跑酷 (激光可預判，塌陷提前碎，導彈預判) ====================
+  // ==================== 地獄跑酷 (精美升級，激光可勾引且不重複) ====================
   const WORLD_LEN = 5000, GRAVITY = 0.6, GROUND_Y = 400;
   let pk = { x:80, y:GROUND_Y-40, vx:0, vy:0, w:28, h:38, onGround:false, alive:true, invincible:0, trail:[] };
   let camX = 0, deathCount = 0, reachedEnd = false, endTimer = 0;
   let terrain = [], traps = [], triggered = new Set(), missiles = [], lasers = [], fallingSpikes = [];
+  let bgClouds = [];
 
   function buildMap() {
     terrain = [
@@ -365,20 +360,23 @@
     ];
     traps = [
       { x:790, type:'invis_block', y:GROUND_Y-90, w:50, h:30 },
-      { x:1080, type:'missile', count:3, intv:35 }, { x:1580, type:'laser', ex:1680, w:160, intv:75, offY:55 },
+      { x:1080, type:'missile', count:3, intv:40 }, { x:1580, type:'laser', ex:1680, w:160, offY:50 },
       { x:1950, type:'ceil_spike', ex:2050, cnt:8, intv:30 }, { x:2400, type:'gnd_spike', ex:2520, h:30, intv:28 },
-      { x:2600, type:'fake_finish' }, { x:3280, type:'laser', ex:3380, w:180, intv:70, offY:50 },
+      { x:2600, type:'fake_finish' }, { x:3280, type:'laser', ex:3380, w:180, offY:45 },
       { x:3450, type:'fake_rev' }, { x:3580, type:'ceil_spike', ex:3680, cnt:10, intv:25 },
-      { x:4150, type:'laser', ex:4280, w:200, intv:65, offY:40 }, { x:WORLD_LEN-60, type:'real_finish' }
+      { x:4150, type:'laser', ex:4280, w:200, offY:35 }, { x:WORLD_LEN-60, type:'real_finish' }
     ];
     triggered.clear(); missiles = []; lasers = []; fallingSpikes = [];
+    bgClouds = [];
+    for (let i=0; i<15; i++) bgClouds.push({ x: Math.random()*WORLD_LEN, y: 30+Math.random()*150, speed: 0.2+Math.random()*0.5, size: 0.6+Math.random()*0.8 });
   }
 
   function resetParkour() {
     pk = { x:80, y:GROUND_Y-40, vx:0, vy:0, w:28, h:38, onGround:false, alive:true, invincible:0, trail:[] };
-    camX = 0; reachedEnd = false; endTimer = 0; buildMap();
+    camX = 0; reachedEnd = false; endTimer = 0;
+    buildMap();
   }
-  function switchToParkour() { gameState = STATE.PARKOUR; resetParkour(); deathCount = 0; inputLeft=inputRight=inputJump=false; triggerFlash(); triggerShake(10,20); }
+  function switchToParkour() { gameState = STATE.PARKOUR; resetParkour(); deathCount = 0; inputLeft=inputRight=inputJump=false; triggerFlash(); triggerShake(10,25); }
 
   function getGroundY(x) {
     for (const t of terrain) {
@@ -389,18 +387,31 @@
     }
     return null;
   }
-  function killPlayer(cause) { if (!pk.alive) return; pk.alive = false; endTimer = 35; spawnParticles(pk.x, pk.y, 35, '#ff3333', 5, 25); triggerShake(8,18); }
+
+  function killPlayer(cause) {
+    if (!pk.alive) return;
+    pk.alive = false; endTimer = 35;
+    spawnParticles(pk.x, pk.y, 40, '#f33', 6, 30);
+    triggerShake(10, 18);
+  }
+
+  function respawnPlayer() {
+    pk.x = 80; pk.y = GROUND_Y-40; pk.vx = 0; pk.vy = 0; pk.alive = true; pk.invincible = 60;
+    camX = 0;
+    missiles = []; lasers = []; fallingSpikes = [];
+    // 保留已觸發陷阱，讓死亡前的激光不再出現
+  }
 
   function spawnMissile(targetX, targetY) {
-    missiles.push({ x: camX+BASE_W+60, y: targetY-10+Math.random()*30, tx: targetX, ty: targetY, spd: 7+Math.random()*4, active:true });
+    missiles.push({ x: camX+BASE_W+80, y: targetY-10+Math.random()*40, tx: targetX, ty: targetY, spd: 7+Math.random()*5, active:true });
   }
 
   function updateParkour() {
     if (reachedEnd) { endTimer--; if (endTimer<=0) triggerEnding(); return; }
-    if (!pk.alive) { endTimer--; if (endTimer<=0) { deathCount++; resetParkour(); } return; }
+    if (!pk.alive) { endTimer--; if (endTimer<=0) { deathCount++; respawnPlayer(); } return; }
     if (pk.invincible>0) pk.invincible--;
     pk.vx = inputLeft ? -4.5 : inputRight ? 4.5 : pk.vx*0.8;
-    if (inputJumpPressed && pk.onGround) { pk.vy = -10.5; pk.onGround = false; inputJumpPressed = false; spawnParticles(pk.x, pk.y+pk.h/2, 8, 'rgb(255,255,255)', 2, 8); }
+    if (inputJumpPressed && pk.onGround) { pk.vy = -10.5; pk.onGround = false; inputJumpPressed = false; spawnParticles(pk.x, pk.y+pk.h/2, 8, '#fff', 2, 8); }
     inputJumpPressed = false;
     pk.vy += GRAVITY; if (pk.vy>14) pk.vy=14;
     pk.x += pk.vx; pk.y += pk.vy;
@@ -410,10 +421,8 @@
     if (gY !== null && pk.y+pk.h/2 >= gY && pk.vy>=0) {
       pk.y = gY - pk.h/2; pk.vy = 0; pk.onGround = true;
       const t = terrain.find(t=> pk.x>=t.s && pk.x<t.e);
-      if (t && t.type==='crumble' && !triggered.has(t.id)) {
-        if (pk.x > t.s+10 && pk.x < t.e-10) {
-          setTimeout(() => { if (!triggered.has(t.id)) { triggered.add(t.id); spawnParticles((t.s+t.e)/2, GROUND_Y+t.yo, 25, '#a67c52', 3, 20); } }, t.delay*16);
-        }
+      if (t && t.type==='crumble' && !triggered.has(t.id) && pk.x>t.s+12 && pk.x<t.e-12) {
+        setTimeout(() => { if (!triggered.has(t.id)) { triggered.add(t.id); spawnParticles((t.s+t.e)/2, GROUND_Y+t.yo, 30, '#a67c52', 4, 25); } }, t.delay*16);
       }
     } else if (gY === null && pk.y+pk.h/2 > GROUND_Y+40) { killPlayer('fall'); }
     if (!pk.onGround && pk.vy>=0) {
@@ -425,75 +434,91 @@
         }
       }
     }
-    if (pk.y > BASE_H+120) killPlayer('fall');
+    if (pk.y > BASE_H+150) killPlayer('fall');
     camX += (pk.x - BASE_W*0.35 - camX)*0.12; camX = Math.max(0, Math.min(WORLD_LEN-BASE_W, camX));
     missiles.forEach(m => {
       if (!m.active) return;
       const dx = m.tx - m.x, dy = m.ty - m.y, dist = Math.sqrt(dx*dx+dy*dy);
-      if (dist < 5) { m.active = false; spawnParticles(m.x, m.y, 15, 'rgb(255,150,0)', 4, 15); }
+      if (dist < 5) { m.active = false; spawnParticles(m.x, m.y, 18, '#f90', 5, 18); }
       else { m.x += dx/dist*m.spd; m.y += dy/dist*m.spd; }
-      if (m.active && pk.invincible<=0 && Math.abs(m.x-pk.x)<14 && Math.abs(m.y-pk.y)<18) killPlayer('missile');
+      if (m.active && pk.invincible<=0 && Math.abs(m.x-pk.x)<16 && Math.abs(m.y-pk.y)<20) killPlayer('missile');
     });
     missiles = missiles.filter(m=>m.active);
     lasers.forEach(l => { l.life--; if (l.life<=0) l.active=false; if (l.active && pk.invincible<=0 && pk.x>l.x-l.w/2 && pk.x<l.x+l.w/2 && pk.y>l.y && pk.y<l.y+l.h) killPlayer('laser'); });
     lasers = lasers.filter(l=>l.active);
     traps.forEach(trap => {
-      const sx = trap.x - camX;
-      if (sx>-60 && sx<BASE_W+60 && !triggered.has(trap.x+'_done')) {
-        if (trap.type==='missile' && Math.abs(pk.x-trap.x)<80) {
-          triggered.add(trap.x+'_done');
-          for (let i=0; i<trap.count; i++) setTimeout(() => {
-            const predictX = pk.x + pk.vx*15; const predictY = pk.y + pk.vy*10;
-            spawnMissile(predictX, predictY);
-          }, i*trap.intv);
-        }
-        if (trap.type==='laser' && pk.x>trap.x && pk.x<trap.ex && !triggered.has(trap.x+'_laser')) {
-          triggered.add(trap.x+'_laser');
-          const laserLoop = () => {
-            if (gameState !== STATE.PARKOUR || pk.x < trap.x || pk.x > trap.ex) return;
-            const lx = trap.x + Math.random()*(trap.ex-trap.x);
-            lasers.push({ x:lx, y:trap.offY||40, w:trap.w, h:BASE_H-(trap.offY||40), active:true, life:22 });
-            setTimeout(laserLoop, trap.intv || 80);
-          };
-          laserLoop();
-        }
-        if (trap.type==='fake_finish' && Math.abs(pk.x-trap.x)<35 && !triggered.has(trap.x+'_fake')) {
-          triggered.add(trap.x+'_fake'); spawnParticles(trap.x, GROUND_Y-80, 45, '#f00', 5, 35);
-          for (let i=0;i<5;i++) setTimeout(() => { const px = pk.x+pk.vx*10; spawnMissile(px, pk.y-20); }, i*55);
-        }
-        if (trap.type==='real_finish' && Math.abs(pk.x-trap.x)<30 && !reachedEnd) {
-          reachedEnd=true; endTimer=45; spawnParticles(trap.x, GROUND_Y-30, 80, '#ffd700', 7, 45); triggerFlash();
-        }
+      if (triggered.has(trap.x+'_done')) return;
+      if (trap.type==='missile' && Math.abs(pk.x-trap.x)<90) {
+        triggered.add(trap.x+'_done');
+        for (let i=0; i<trap.count; i++) setTimeout(() => { const px = pk.x+pk.vx*15, py = pk.y+pk.vy*10; spawnMissile(px, py); }, i*trap.intv);
+      }
+      if (trap.type==='laser' && pk.x>trap.x && pk.x<trap.ex && !triggered.has(trap.x+'_laser')) {
+        triggered.add(trap.x+'_laser');
+        const lx = trap.x + Math.random()*(trap.ex-trap.x);
+        lasers.push({ x:lx, y:trap.offY||40, w:trap.w, h:BASE_H-(trap.offY||40), active:true, life:28 });
+      }
+      if (trap.type==='fake_finish' && Math.abs(pk.x-trap.x)<35) {
+        triggered.add(trap.x+'_done');
+        spawnParticles(trap.x, GROUND_Y-80, 50, '#f00', 6, 40);
+        for (let i=0;i<5;i++) setTimeout(() => { const px=pk.x+pk.vx*12; spawnMissile(px, pk.y-25); }, i*60);
+      }
+      if (trap.type==='real_finish' && Math.abs(pk.x-trap.x)<30 && !reachedEnd) {
+        reachedEnd=true; endTimer=50; spawnParticles(trap.x, GROUND_Y-40, 100, '#ffd700', 8, 55); triggerFlash();
       }
     });
   }
 
   function drawParkour(ctx) {
-    const grad = ctx.createLinearGradient(0,0,0,BASE_H); grad.addColorStop(0,'#0e1424'); grad.addColorStop(1,'#1a2540');
-    ctx.fillStyle = grad; ctx.fillRect(0,0,BASE_W,BASE_H);
+    // 天空
+    const skyGrad = ctx.createLinearGradient(0,0,0,BASE_H); skyGrad.addColorStop(0,'#0a0a20'); skyGrad.addColorStop(0.6,'#1a2a40'); skyGrad.addColorStop(1,'#2a3a50');
+    ctx.fillStyle = skyGrad; ctx.fillRect(0,0,BASE_W,BASE_H);
+    // 星星
+    ctx.fillStyle = '#fff';
+    for (let i=0; i<40; i++) { const sx = (i*67)%BASE_W, sy = (i*43)%(BASE_H*0.5); ctx.globalAlpha = 0.5+Math.sin(Date.now()*0.002+i)*0.3; ctx.fillRect(sx,sy,1.5,1.5); }
+    ctx.globalAlpha = 1;
+    // 遠山
+    ctx.fillStyle = '#151a2e'; ctx.beginPath(); ctx.moveTo(0,BASE_H);
+    for (let x=0; x<BASE_W; x+=20) { const wx = x+camX*0.2; ctx.lineTo(x, BASE_H-80-Math.sin(wx*0.008)*30-Math.sin(wx*0.02)*20); }
+    ctx.lineTo(BASE_W,BASE_H); ctx.fill();
+    // 雲
+    bgClouds.forEach(c => { const sx = c.x - camX*0.3; if (sx<-100||sx>BASE_W+100) return; ctx.fillStyle='rgba(255,255,255,0.08)'; ctx.beginPath(); ctx.arc(sx,c.y,20*c.size,0,Math.PI*2); ctx.fill(); });
+    // 地形
     terrain.forEach(t => {
       const sx = t.s - camX, ex = t.e - camX; if (ex<-10||sx>BASE_W+10) return;
       if (t.type==='crumble' && triggered.has(t.id)) return;
       const gy = GROUND_Y + (t.yo||0);
-      if (t.plat) { ctx.fillStyle = t.type==='move'?'#5b8c5a':'#4a7040'; ctx.fillRect(Math.max(0,sx), gy-6, Math.min(BASE_W,ex)-Math.max(0,sx), 8); }
-      else { ctx.fillStyle='#3a5a30'; ctx.fillRect(Math.max(0,sx), gy, Math.min(BASE_W,ex)-Math.max(0,sx), BASE_H-gy); ctx.fillStyle='#5a8a40'; ctx.fillRect(Math.max(0,sx), gy, Math.min(BASE_W,ex)-Math.max(0,sx), 4); }
+      if (t.plat) {
+        ctx.fillStyle = t.type==='move'?'#5a8a4a':'#4a6a3a'; ctx.fillRect(Math.max(0,sx), gy-8, Math.min(BASE_W,ex)-Math.max(0,sx), 10);
+        ctx.fillStyle = '#6b9e5a'; ctx.fillRect(Math.max(0,sx), gy-6, Math.min(BASE_W,ex)-Math.max(0,sx), 4);
+      } else {
+        ctx.fillStyle = '#2a4a20'; ctx.fillRect(Math.max(0,sx), gy, Math.min(BASE_W,ex)-Math.max(0,sx), BASE_H-gy);
+        ctx.fillStyle = '#4a7a30'; ctx.fillRect(Math.max(0,sx), gy, Math.min(BASE_W,ex)-Math.max(0,sx), 6);
+        ctx.fillStyle = '#5a8a40'; ctx.fillRect(Math.max(0,sx), gy+6, Math.min(BASE_W,ex)-Math.max(0,sx), 3);
+        for (let gx = Math.max(0,sx); gx < Math.min(BASE_W,ex); gx+=12) { ctx.fillStyle = '#6b9e4a'; ctx.fillRect(gx, gy-2, 6, 4); }
+      }
     });
-    missiles.forEach(m => { if(!m.active)return; const mx=m.x-camX,my=m.y; if(mx<-40||mx>BASE_W+40)return;
+    // 導彈
+    missiles.forEach(m => { if(!m.active)return; const mx=m.x-camX,my=m.y;
       ctx.save(); ctx.translate(mx,my); ctx.rotate(Math.atan2(m.ty-m.y,m.tx-m.x));
-      ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.moveTo(14,0); ctx.lineTo(-8,-6); ctx.lineTo(-8,6); ctx.fill();
-      ctx.fillStyle='#f39c12'; ctx.beginPath(); ctx.arc(-10,0,5,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.moveTo(-15,-3); ctx.lineTo(-22,0); ctx.lineTo(-15,3); ctx.fill();
+      ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.moveTo(16,0); ctx.lineTo(-10,-7); ctx.lineTo(-10,7); ctx.fill();
+      ctx.fillStyle='#f39c12'; ctx.beginPath(); ctx.arc(-12,0,6,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#ff0'; ctx.beginPath(); ctx.moveTo(-18,-4); ctx.lineTo(-26,0); ctx.lineTo(-18,4); ctx.fill();
       ctx.restore();
     });
-    lasers.forEach(l => { if(!l.active)return; const lx=l.x-camX; ctx.fillStyle=`rgba(255,0,80,${l.life/22})`; ctx.fillRect(lx-l.w/2, l.y, l.w, l.h); });
+    // 激光
+    lasers.forEach(l => { if(!l.active)return; const lx=l.x-camX; const alpha = l.life/28; ctx.fillStyle=`rgba(255,40,80,${alpha})`; ctx.fillRect(lx-l.w/2, l.y, l.w, l.h); ctx.fillStyle=`rgba(255,255,255,${alpha*0.5})`; ctx.fillRect(lx-l.w/2+4, l.y, l.w-8, l.h); });
+    // 玩家
     const px = pk.x-camX, py = pk.y;
     if (pk.alive && pk.invincible%6<3) {
       ctx.fillStyle='#ff6b6b'; ctx.fillRect(px-pk.w/2, py-pk.h/2, pk.w, pk.h);
-      ctx.fillStyle='#ffcc99'; ctx.beginPath(); ctx.arc(px, py-pk.h/2-5, pk.w*0.38,0,Math.PI*2); ctx.fill();
-      ctx.fillStyle='#000'; ctx.fillRect(px+3, py-pk.h/2-8,3,4); ctx.fillRect(px-6, py-pk.h/2-8,3,4);
+      ctx.fillStyle='#ffcc99'; ctx.beginPath(); ctx.arc(px, py-pk.h/2-6, pk.w*0.4,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='#000'; ctx.fillRect(px+4, py-pk.h/2-10,3,5); ctx.fillRect(px-7, py-pk.h/2-10,3,5);
+      ctx.fillStyle='#f33'; ctx.fillRect(px-pk.w/2+2, py+pk.h/2-4, 6, 6); ctx.fillRect(px+pk.w/2-8, py+pk.h/2-4, 6, 6);
     }
-    if (!pk.alive) { ctx.fillStyle='rgba(255,0,0,0.7)'; ctx.font='bold 24px "Noto Sans TC"'; ctx.textAlign='center'; ctx.fillText('💀 死亡', px, py-25); }
-    ctx.fillStyle='#fff'; ctx.font='bold 13px monospace'; ctx.textAlign='left'; ctx.fillText(`死亡: ${deathCount}  進度: ${Math.floor(pk.x/WORLD_LEN*100)}%`, 15,22);
+    if (!pk.alive) { ctx.fillStyle='rgba(255,0,0,0.8)'; ctx.font='bold 26px "Noto Sans TC"'; ctx.textAlign='center'; ctx.fillText('💀', px, py-20); }
+    // HUD
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 14px monospace'; ctx.textAlign = 'left';
+    ctx.fillText(`💀 ${deathCount}  📍 ${Math.floor(pk.x/WORLD_LEN*100)}%`, 15, 25);
   }
 
   function triggerEnding() {
@@ -522,7 +547,7 @@
     if (restore) ctx.restore();
     requestAnimationFrame(gameLoop);
   }
-  resizeCanvas(); resetAll(); requestAnimationFrame(gameLoop);
+  resetAll(); requestAnimationFrame(gameLoop);
 })();
 </script>
 </body>
